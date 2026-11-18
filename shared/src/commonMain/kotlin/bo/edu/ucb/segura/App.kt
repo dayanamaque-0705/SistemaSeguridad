@@ -24,10 +24,10 @@ sealed class Screen {
 
 @Composable
 fun App() {
-    // Estado que guarda la pantalla actual en la que se encuentra el usuario (inicia en Login)
+    // Estado de pantalla y tema oscuro/claro
     var currentScreen by remember { mutableStateOf<Screen>(Screen.Login) }
+    var isDarkMode by remember { mutableStateOf(true) }
 
-    // Cambia de pantalla dinámicamente según la opción seleccionada
     when (currentScreen) {
         is Screen.Login -> LoginScreen(
             onLoginSuccess = { currentScreen = Screen.Home },
@@ -38,6 +38,8 @@ fun App() {
             onNavigateToLogin = { currentScreen = Screen.Login }
         )
         is Screen.Home -> HomeScreen(
+            isDarkMode = isDarkMode,
+            onToggleTheme = { isDarkMode = !isDarkMode },
             onNavigateToReport = { currentScreen = Screen.ReportIncident },
             onTriggerPanicAlert = { currentScreen = Screen.PanicAlert },
             onOpenProfile = { currentScreen = Screen.Profile },
@@ -52,13 +54,15 @@ fun App() {
             onReturnToMap = { currentScreen = Screen.Home }
         )
         is Screen.MyReports -> MyReportsScreen(
-            onNavigateBack = { currentScreen = Screen.Home }
+            onNavigateBack = { currentScreen = Screen.Home },
+            onReturnToMap = { currentScreen = Screen.Home }
         )
-        is Screen.PanicAlert ->PanicAlertScreen(
+        is Screen.PanicAlert -> PanicAlertScreen(
             onCancelAlert = { currentScreen = Screen.Home }
         )
         is Screen.Profile -> UserProfileScreen(
             onNavigateBack = { currentScreen = Screen.Home },
+            onOpenMyReports = { currentScreen = Screen.MyReports },
             onLogout = { currentScreen = Screen.Login }
         )
     }

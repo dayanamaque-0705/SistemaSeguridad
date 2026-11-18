@@ -1,9 +1,11 @@
 package bo.edu.ucb.segura.features.reports.ui.reports
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -17,30 +19,32 @@ import bo.edu.ucb.segura.core.data.AppStateRepository
 
 @Composable
 fun MyReportsScreen(
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onReturnToMap: () -> Unit
 ) {
-    val backgroundColor = Color(0xFF0B132B)
-    val cardColor = Color(0xFF1C2541)
+    val backgroundColor = Color(0xFF07111E)
+    val cardColor = Color(0xFF0F1B2E)
+    val itemBgColor = Color(0xFF132238)
     val primaryBlue = Color(0xFF2563EB)
     val textColor = Color.White
     val grayText = Color(0xFF94A3B8)
 
-    // Lista en tiempo real de reportes desde el AppStateRepository
+    val currentUser by AppStateRepository.currentUser.collectAsState()
     val reportsList by AppStateRepository.reportsState.collectAsState()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
-            .padding(16.dp)
+            .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Barra superior
+            // BARRA SUPERIOR MATCH SCREENSHOT 3
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -48,96 +52,191 @@ fun MyReportsScreen(
             ) {
                 IconButton(
                     onClick = onNavigateBack,
-                    modifier = Modifier
-                        .size(36.dp)
-                        .background(Color(0xFF334155), shape = RoundedCornerShape(18.dp))
+                    modifier = Modifier.size(36.dp)
                 ) {
-                    Text("←", color = textColor, fontSize = 18.sp)
+                    Text("←", color = textColor, fontSize = 20.sp)
                 }
-                Text("Mis Reportes & Historial", color = textColor, style = MaterialTheme.typography.titleMedium, fontSize = 18.sp, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(36.dp))
+
+                Text(
+                    text = "Mis reportes",
+                    color = textColor,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+
+                Text(
+                    text = "UCB",
+                    color = grayText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
-            // Tarjeta de resumen de participación del estudiante UCB
+            // PERFIL DEL ESTUDIANTE EN LA PARTE SUPERIOR
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .background(Color(0xFF1E3A8A), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val initials = currentUser?.fullName?.take(2)?.uppercase() ?: "MV"
+                    Text(initials, color = Color.White, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                }
+                Column {
+                    Text(
+                        text = currentUser?.fullName ?: "Mariana Vargas",
+                        color = textColor,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Mi participación en la comunidad UCB",
+                        color = grayText,
+                        fontSize = 11.sp
+                    )
+                }
+            }
+
+            // TARJETA DE RESUMEN: "12 Reportes totales"
             Surface(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(16.dp),
                 color = cardColor
             ) {
-                Row(
-                    modifier = Modifier.padding(20.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Total reportes aportados a la UCB", color = grayText, fontSize = 12.sp)
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Text("${reportsList.size}", color = textColor, style = MaterialTheme.typography.headlineMedium, fontSize = 28.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Box(
-                        modifier = Modifier
-                            .size(48.dp)
-                            .background(primaryBlue.copy(alpha = 0.2f), shape = RoundedCornerShape(12.dp)),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text("📊", fontSize = 22.sp)
-                    }
+                Column(modifier = Modifier.padding(18.dp)) {
+                    Text("${reportsList.size}", color = textColor, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                    Text("Reportes totales", color = grayText, fontSize = 12.sp)
                 }
             }
 
-            Text("Historial de incidentes notificados", color = textColor, style = MaterialTheme.typography.titleSmall, fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
+            // TAB "Todos - 12"
+            Surface(
+                modifier = Modifier.fillMaxWidth().height(42.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = primaryBlue
+            ) {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("Todos • ${reportsList.size}", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
 
-            // Lista dinámica de reportes
+            Text("Vista de ejemplo • ${reportsList.size} de ${reportsList.size} reportes", color = grayText, fontSize = 11.sp)
+
+            // LISTA DE TARJETAS DE REPORTES MATCH SCREENSHOT 3
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(10.dp),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.weight(1f)
             ) {
                 items(reportsList) { report ->
+                    val (iconStr, iconBg) = when (report.type.uppercase()) {
+                        "ROBO" -> "⚠️" to Color(0xFF7F1D1D)
+                        "FALTA_LUZ" -> "💡" to Color(0xFF1E3A8A)
+                        "SOSPECHOSO" -> "👤" to Color(0xFF581C87)
+                        else -> "👥" to Color(0xFF7C2D12)
+                    }
+
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = RoundedCornerShape(16.dp),
                         color = cardColor
                     ) {
                         Column(
                             modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(6.dp)
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Text(
-                                    text = report.type,
-                                    color = textColor,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    fontSize = 15.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .background(itemBgColor, shape = RoundedCornerShape(10.dp)),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(iconStr, fontSize = 18.sp)
+                                    }
+                                    Column {
+                                        Text(report.type, color = textColor, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                                        Text(report.location, color = grayText, fontSize = 11.sp)
+                                    }
+                                }
+                                Text(">", color = grayText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            }
+
+                            Text(
+                                text = report.description,
+                                color = textColor,
+                                fontSize = 12.sp
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
                                 Surface(
                                     shape = RoundedCornerShape(8.dp),
-                                    color = when (report.status.lowercase()) {
-                                        "resuelto" -> Color(0xFF166534)
-                                        "activo" -> Color(0xFF1E3A8A)
-                                        else -> Color(0xFF854D0E)
-                                    }
+                                    color = itemBgColor
                                 ) {
                                     Text(
                                         text = report.status,
-                                        color = Color.White,
+                                        color = grayText,
                                         fontSize = 11.sp,
-                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                        fontWeight = FontWeight.SemiBold
+                                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                     )
                                 }
+
+                                Text(
+                                    text = "Ver seguimiento",
+                                    color = Color(0xFF60A5FA),
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.clickable { }
+                                )
                             }
-                            Text(report.description, color = textColor, fontSize = 13.sp)
-                            Text("📍 Ubicación: ${report.location}", color = grayText, fontSize = 12.sp)
-                            Text("🕒 ${report.timestamp}", color = Color(0xFF64748B), fontSize = 11.sp)
                         }
                     }
                 }
             }
+
+            // BOTÓN "Volver al mapa"
+            OutlinedButton(
+                onClick = onReturnToMap,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("🗺️", fontSize = 16.sp)
+                    Text("Volver al mapa", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Text(
+                text = "Comunidad UCB • Versión 1.0.0",
+                color = Color(0xFF475569),
+                fontSize = 11.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally).padding(bottom = 8.dp)
+            )
         }
     }
 }

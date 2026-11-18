@@ -25,17 +25,20 @@ import bo.edu.ucb.segura.features.home.model.RiskLevel
 
 @Composable
 fun HomeScreen(
+    isDarkMode: Boolean = true,
+    onToggleTheme: () -> Unit = {},
     onNavigateToReport: () -> Unit,
     onTriggerPanicAlert: () -> Unit,
     onOpenProfile: () -> Unit,
     onOpenMyReports: () -> Unit
 ) {
-    val mapBackground = Color(0xFF0B132B)
-    val cardColor = Color(0xFF1E293B)
+    // Paleta de colores adaptable Claro / Oscuro
+    val mapBackground = if (isDarkMode) Color(0xFF07111E) else Color(0xFFF1F5F9)
+    val cardColor = if (isDarkMode) Color(0xFF0F1B2E) else Color(0xFFFFFFFF)
     val primaryBlue = Color(0xFF2563EB)
     val sosRed = Color(0xFFDC2626)
-    val textColor = Color.White
-    val grayText = Color(0xFF94A3B8)
+    val textColor = if (isDarkMode) Color.White else Color(0xFF0F172A)
+    val grayText = if (isDarkMode) Color(0xFF94A3B8) else Color(0xFF64748B)
 
     // Estados observados en tiempo real desde AppStateRepository
     val dangerZones by AppStateRepository.dangerZonesState.collectAsState()
@@ -75,11 +78,11 @@ fun HomeScreen(
             }
         )
 
-        // --- 2. BARRA SUPERIOR (HEADER) CON LOGO Y PERFIL DEL ESTUDIANTE ---
+        // --- 2. BARRA SUPERIOR (HEADER) MATCH SCREENSHOT 2 ---
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(top = 48.dp, start = 16.dp, end = 16.dp),
+                .padding(top = 44.dp, start = 16.dp, end = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -96,29 +99,33 @@ fun HomeScreen(
                     Box(
                         modifier = Modifier
                             .size(32.dp)
-                            .background(primaryBlue, shape = CircleShape),
+                            .background(Color(0xFF1E3A8A), shape = CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
                         Text("🛡️", fontSize = 16.sp)
                     }
-                    Column {
-                        Text(
-                            text = "UCB Segura",
-                            color = textColor,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Text(
-                            text = "Campus Tupuraya",
-                            color = grayText,
-                            fontSize = 11.sp
-                        )
-                    }
+                    Text(
+                        text = "UCB Segura",
+                        color = textColor,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 16.sp
+                    )
                 }
             }
 
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                // BOTÓN DE CAMBIO DE TEMA CLARO / OSCURO
+                IconButton(
+                    onClick = onToggleTheme,
+                    modifier = Modifier
+                        .size(42.dp)
+                        .background(cardColor.copy(alpha = 0.92f), shape = CircleShape)
+                ) {
+                    Text(if (isDarkMode) "☀️" else "🌙", fontSize = 18.sp)
+                }
+
+                // BOTÓN DE PERFIL "MV"
                 Button(
                     onClick = onOpenProfile,
                     modifier = Modifier.size(42.dp),
@@ -126,17 +133,17 @@ fun HomeScreen(
                     colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
                     contentPadding = PaddingValues(0.dp)
                 ) {
-                    val initials = currentUser?.fullName?.take(2)?.uppercase() ?: "UCB"
-                    Text(initials, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    val initials = currentUser?.fullName?.take(2)?.uppercase() ?: "MV"
+                    Text(initials, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
 
-        // --- 3. BARRA DE FILTROS DE RIESGO Y BOTÓN "AQUÍ ESTOY" ---
+        // --- 3. TARJETA FLOTANTE "Riesgo esta noche" Y "📍 Aquí estoy" ---
         Column(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .padding(top = 112.dp, start = 16.dp, end = 16.dp),
+                .padding(top = 104.dp, start = 16.dp, end = 16.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Surface(
@@ -145,54 +152,27 @@ fun HomeScreen(
                 shadowElevation = 6.dp
             ) {
                 Column(
-                    modifier = Modifier.padding(10.dp),
+                    modifier = Modifier.padding(12.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
                     Text(
-                        text = "🗺️ Mapa de Riesgo en Vivo (${incidentMarkers.size} reportes)",
+                        text = "Riesgo esta noche",
                         color = textColor,
                         fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.Bold
                     )
                     Row(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        FilterChipItem(
-                            label = "Todos",
-                            color = primaryBlue,
-                            isSelected = selectedRiskFilter == "TODOS" || selectedRiskFilter == null,
-                            onClick = { selectedRiskFilter = "TODOS" }
-                        )
-                        FilterChipItem(
-                            label = "Alto",
-                            color = Color(0xFFEF4444),
-                            isSelected = selectedRiskFilter == "ALTO",
-                            onClick = { selectedRiskFilter = "ALTO" }
-                        )
-                        FilterChipItem(
-                            label = "Medio",
-                            color = Color(0xFFF97316),
-                            isSelected = selectedRiskFilter == "MEDIO",
-                            onClick = { selectedRiskFilter = "MEDIO" }
-                        )
-                        FilterChipItem(
-                            label = "Bajo",
-                            color = Color(0xFFEAB308),
-                            isSelected = selectedRiskFilter == "BAJO",
-                            onClick = { selectedRiskFilter = "BAJO" }
-                        )
-                        FilterChipItem(
-                            label = "Seguro",
-                            color = Color(0xFF22C55E),
-                            isSelected = selectedRiskFilter == "SEGURA",
-                            onClick = { selectedRiskFilter = "SEGURA" }
-                        )
+                        RiskIndicator(color = Color(0xFFEAB308), label = "Bajo")
+                        RiskIndicator(color = Color(0xFFF97316), label = "Medio")
+                        RiskIndicator(color = Color(0xFFEF4444), label = "Alto")
                     }
                 }
             }
 
-            // Botón flotante "📍 Aquí estoy" para centrar el GPS
+            // BOTÓN DE ENFOQUE EN VIVO DE GPS "📍 Aquí estoy"
             Surface(
                 modifier = Modifier.clickable {
                     centerOnLocation = Pair(-17.3714, -66.1432)
@@ -427,34 +407,13 @@ fun HomeScreen(
 }
 
 @Composable
-fun FilterChipItem(
-    label: String,
-    color: Color,
-    isSelected: Boolean,
-    onClick: () -> Unit
-) {
-    Surface(
-        modifier = Modifier.clickable { onClick() },
-        shape = RoundedCornerShape(12.dp),
-        color = if (isSelected) color else Color(0xFF0F172A),
-        border = if (isSelected) null else androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(6.dp)
-                    .background(if (isSelected) Color.White else color, shape = CircleShape)
-            )
-            Text(
-                text = label,
-                color = if (isSelected) Color.White else Color(0xFF94A3B8),
-                fontSize = 11.sp,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            )
-        }
+fun RiskIndicator(color: Color, label: String) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .background(color, shape = CircleShape)
+        )
+        Text(text = label, color = Color(0xFF94A3B8), fontSize = 10.sp)
     }
 }

@@ -4,6 +4,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -33,14 +34,15 @@ fun ReportIncidentScreen(
     var description by remember { mutableStateOf("") }
     var isPickerMapOpen by remember { mutableStateOf(false) }
 
-    // Ubicación seleccionada en tiempo real (inicia en las coordenadas del Campus Tupuraya UCB)
+    // Ubicación seleccionada en tiempo real
     var selectedLat by remember { mutableStateOf(-17.3718) }
     var selectedLng by remember { mutableStateOf(-66.1435) }
-    var locationName by remember { mutableStateOf("Campus Tupuraya (-17.3718, -66.1435)") }
+    var locationName by remember { mutableStateOf("Mi ubicación actual") }
 
     // Colores basados en el diseño oscuro institucional
-    val backgroundColor = Color(0xFF0B132B)
-    val cardColor = Color(0xFF1C2541)
+    val backgroundColor = Color(0xFF07111E).copy(alpha = 0.85f)
+    val cardColor = Color(0xFF0F1B2E)
+    val inputBgColor = Color(0xFF132238)
     val primaryBlue = Color(0xFF2563EB)
     val textColor = Color.White
     val grayText = Color(0xFF94A3B8)
@@ -48,8 +50,7 @@ fun ReportIncidentScreen(
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(backgroundColor)
-            .padding(16.dp),
+            .background(backgroundColor),
         contentAlignment = Alignment.BottomCenter
     ) {
         Column(
@@ -59,7 +60,16 @@ fun ReportIncidentScreen(
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // Barra superior del modal con título y botón cerrar (X)
+            // DRAG HANDLE ARRIBA
+            Box(
+                modifier = Modifier
+                    .width(40.dp)
+                    .height(4.dp)
+                    .background(Color(0xFF334155), shape = RoundedCornerShape(2.dp))
+                    .align(Alignment.CenterHorizontally)
+            )
+
+            // BARRA SUPERIOR CON TÍTULO Y CERRAR (X)
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -70,11 +80,11 @@ fun ReportIncidentScreen(
                         text = "Reportar incidente",
                         color = textColor,
                         style = MaterialTheme.typography.titleLarge,
-                        fontSize = 20.sp,
+                        fontSize = 22.sp,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "¿Qué está ocurriendo en el perímetro del campus?",
+                        text = "¿Qué está ocurriendo?",
                         color = grayText,
                         fontSize = 13.sp
                     )
@@ -84,27 +94,27 @@ fun ReportIncidentScreen(
                     onClick = onNavigateBack,
                     modifier = Modifier
                         .size(36.dp)
-                        .background(Color(0xFF334155), shape = RoundedCornerShape(18.dp))
+                        .background(Color(0xFF1E293B), shape = CircleShape)
                 ) {
                     Text("✕", color = textColor, fontSize = 16.sp)
                 }
             }
 
-            // Cuadrícula de opciones de incidentes (2x2)
+            // CUADRÍCULA 2X2 DE TIPOS DE INCIDENTE CON BADGE AZUL '✓'
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     IncidentOptionCard(
-                        title = "Robo / Asalto",
+                        title = "Robo",
                         icon = "⚠️",
                         isSelected = selectedType == "Robo",
                         modifier = Modifier.weight(1f),
                         onClick = { selectedType = "Robo" }
                     )
                     IncidentOptionCard(
-                        title = "Riña / Altercado",
+                        title = "Riña",
                         icon = "👥",
                         isSelected = selectedType == "Riña",
                         modifier = Modifier.weight(1f),
@@ -132,36 +142,35 @@ fun ReportIncidentScreen(
                 }
             }
 
-            // Campo de Descripción
+            // CAMPO DE DESCRIPCIÓN
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(text = "Descripción (opcional)", color = grayText, fontSize = 12.sp)
+                Text(text = "Descripción (opcional)", color = grayText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 OutlinedTextField(
                     value = description,
                     onValueChange = { description = it },
-                    placeholder = { Text("Detalla brevemente lo sucedido para alertar a la comunidad UCB...", color = Color(0xFF64748B), fontSize = 13.sp) },
+                    placeholder = { Text("Agrega un detalle breve que ayude a la comunidad...", color = Color(0xFF64748B), fontSize = 13.sp) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(90.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = primaryBlue,
-                        unfocusedBorderColor = Color(0xFF334155),
-                        focusedContainerColor = Color(0xFF0F172A),
-                        unfocusedContainerColor = Color(0xFF0F172A),
+                        unfocusedBorderColor = Color(0xFF1E293B),
+                        focusedContainerColor = inputBgColor,
+                        unfocusedContainerColor = inputBgColor,
                         focusedTextColor = textColor,
                         unfocusedTextColor = textColor
                     )
                 )
             }
 
-            // Tarjeta de Selección de Ubicación Dinámica en el Mapa
+            // TARJETA DE MI UBICACIÓN ACTUAL / ELECCIÓN EN MAPA
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clickable { isPickerMapOpen = true },
                 shape = RoundedCornerShape(14.dp),
-                color = Color(0xFF0F172A),
-                border = androidx.compose.foundation.BorderStroke(1.5.dp, primaryBlue)
+                color = inputBgColor
             ) {
                 Row(
                     modifier = Modifier.padding(14.dp),
@@ -174,23 +183,22 @@ fun ReportIncidentScreen(
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(40.dp)
+                                .size(38.dp)
                                 .background(Color(0xFF1E3A8A), shape = RoundedCornerShape(10.dp)),
                             contentAlignment = Alignment.Center
                         ) {
                             Text("📍", fontSize = 18.sp)
                         }
                         Column {
-                            Text("Ubicación exacta del incidente", color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                            Text(locationName, color = Color(0xFF60A5FA), fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                            Text("👉 Toca aquí para abrir el mapa y presionar dónde ocurrió", color = grayText, fontSize = 10.sp)
+                            Text("Mi ubicación actual", color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text(locationName, color = grayText, fontSize = 11.sp)
                         }
                     }
-                    Text("🗺️", fontSize = 20.sp)
+                    Text(">", color = grayText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
-            // Botón inferior de Enviar reporte
+            // BOTÓN DE ENVIAR REPORTE
             Button(
                 onClick = {
                     AppStateRepository.createReport(
@@ -206,20 +214,26 @@ fun ReportIncidentScreen(
                     .fillMaxWidth()
                     .height(52.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
-                shape = RoundedCornerShape(26.dp)
+                shape = RoundedCornerShape(16.dp)
             ) {
-                Text("📋 Publicar e informar al mapa", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("📋", fontSize = 18.sp)
+                    Text("Enviar reporte", color = Color.White, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                }
             }
 
             Text(
-                text = "Tu reporte aparecerá inmediatamente en el mapa de seguridad UCB.",
+                text = "Los reportes son visibles para la comunidad UCB.",
                 color = grayText,
                 fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
         }
 
-        // MODAL DE MAPA SELECCIONADOR DE UBICACIÓN DINÁMICO
+        // MODAL DE MAPA SELECCIONADOR DE UBICACIÓN
         if (isPickerMapOpen) {
             Dialog(
                 onDismissRequest = { isPickerMapOpen = false },
@@ -227,10 +241,9 @@ fun ReportIncidentScreen(
             ) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
-                    color = backgroundColor
+                    color = Color(0xFF07111E)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
-                        // Mapa interactivo con captura de toques (onMapTap) y marcador pin rojo en vivo (selectedPickerLocation)
                         CampusMapView(
                             modifier = Modifier.fillMaxSize(),
                             selectedPickerLocation = Pair(selectedLat, selectedLng),
@@ -251,7 +264,7 @@ fun ReportIncidentScreen(
                             }
                         )
 
-                        // Cabecera flotante del mapa selector
+                        // Cabecera flotante
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -266,8 +279,8 @@ fun ReportIncidentScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("🎯 Toca en el mapa dónde ocurrió el hecho", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                    Text("Presiona cualquier punto en el campus para mover el pin rojo", color = grayText, fontSize = 11.sp)
+                                    Text("🎯 Toca el mapa para fijar la ubicación", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    Text("Mueve el pin rojo para seleccionar el lugar del incidente", color = grayText, fontSize = 11.sp)
                                 }
                                 IconButton(onClick = { isPickerMapOpen = false }) {
                                     Text("✕", color = textColor, fontSize = 16.sp)
@@ -275,7 +288,7 @@ fun ReportIncidentScreen(
                             }
                         }
 
-                        // Tarjeta inferior con confirmación de coordenadas fijadas
+                        // Tarjeta inferior de confirmación
                         Surface(
                             modifier = Modifier
                                 .align(Alignment.BottomCenter)
@@ -289,9 +302,8 @@ fun ReportIncidentScreen(
                                 modifier = Modifier.padding(16.dp),
                                 verticalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
-                                Text("Punto fijado con el pin:", color = grayText, fontSize = 11.sp)
+                                Text("Punto fijado:", color = grayText, fontSize = 11.sp)
                                 Text("📍 $locationName", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                Text("Coordenadas: Lat ${formatCoord(selectedLat)}, Lng ${formatCoord(selectedLng)}", color = Color(0xFF60A5FA), fontSize = 11.sp)
 
                                 Button(
                                     onClick = { isPickerMapOpen = false },
@@ -299,7 +311,7 @@ fun ReportIncidentScreen(
                                     colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
                                     shape = RoundedCornerShape(14.dp)
                                 ) {
-                                    Text("Confirmar esta ubicación", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                                    Text("Confirmar ubicación", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
                                 }
                             }
                         }
@@ -319,7 +331,7 @@ fun IncidentOptionCard(
     onClick: () -> Unit
 ) {
     val borderColor = if (isSelected) Color(0xFF2563EB) else Color.Transparent
-    val backgroundColor = Color(0xFF0F172A)
+    val backgroundColor = Color(0xFF132238)
 
     Surface(
         modifier = modifier
@@ -329,21 +341,44 @@ fun IncidentOptionCard(
         shape = RoundedCornerShape(14.dp),
         color = backgroundColor
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            Text(icon, fontSize = 20.sp)
-            Text(
-                text = title,
-                color = Color.White,
-                fontSize = 13.sp,
-                maxLines = 2,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
-            )
+        Box(modifier = Modifier.fillMaxSize()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(36.dp)
+                        .background(Color(0xFF1E293B), shape = RoundedCornerShape(10.dp)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(icon, fontSize = 18.sp)
+                }
+                Text(
+                    text = title,
+                    color = Color.White,
+                    fontSize = 13.sp,
+                    maxLines = 2,
+                    fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal
+                )
+            }
+
+            // BADGE AZUL '✓' EN LA ESQUINA SUPERIOR DERECHA
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                        .size(18.dp)
+                        .background(Color(0xFF2563EB), shape = CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text("✓", color = Color.White, fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                }
+            }
         }
     }
 }

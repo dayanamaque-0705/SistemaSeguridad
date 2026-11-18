@@ -1,9 +1,12 @@
 package bo.edu.ucb.segura.features.profile.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,126 +20,186 @@ import bo.edu.ucb.segura.core.data.AppStateRepository
 @Composable
 fun UserProfileScreen(
     onNavigateBack: () -> Unit,
+    onOpenMyReports: () -> Unit,
     onLogout: () -> Unit
 ) {
-    val backgroundColor = Color(0xFF0F172A)
-    val surfaceColor = Color(0xFF1E293B)
+    val backgroundColor = Color(0xFF07111E)
+    val cardColor = Color(0xFF0F1B2E)
+    val itemBgColor = Color(0xFF132238)
+    val primaryBlue = Color(0xFF2563EB)
     val textColor = Color.White
     val grayText = Color(0xFF94A3B8)
 
     val currentUser by AppStateRepository.currentUser.collectAsState()
+    val reportsList by AppStateRepository.reportsState.collectAsState()
 
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(backgroundColor)
-            .padding(24.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth(),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+                .verticalScroll(rememberScrollState()),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(24.dp))
 
-            // Barra superior
+            // BARRA SUPERIOR MATCH SCREENSHOT 3
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(onClick = onNavigateBack) {
-                    Text("← Volver", color = textColor, fontSize = 16.sp)
+                IconButton(
+                    onClick = onNavigateBack,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Text("←", color = textColor, fontSize = 20.sp)
                 }
-                Text("Perfil Institucional UCB", color = textColor, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
-                Spacer(modifier = Modifier.width(48.dp))
+
+                Text(
+                    text = "Mi perfil",
+                    color = textColor,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 18.sp
+                )
+
+                Text(
+                    text = "UCB",
+                    color = grayText,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold
+                )
             }
 
-            // Cabecera del Usuario (Avatar e información)
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = surfaceColor
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // AVATAR E INFORMACIÓN PRINCIPAL
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                Row(
-                    modifier = Modifier.padding(18.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(16.dp)
+                Box(
+                    modifier = Modifier
+                        .size(72.dp)
+                        .background(Color(0xFF1E3A8A), CircleShape),
+                    contentAlignment = Alignment.Center
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(64.dp)
-                            .background(Color(0xFF1D4ED8), CircleShape),
-                        contentAlignment = Alignment.Center
+                    val initials = currentUser?.fullName?.take(2)?.uppercase() ?: "MV"
+                    Text(initials, color = Color.White, fontSize = 26.sp, fontWeight = FontWeight.Bold)
+                }
+
+                Text(
+                    text = currentUser?.fullName ?: "Mariana Vargas",
+                    color = textColor,
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp
+                )
+
+                Text(
+                    text = currentUser?.email ?: "mariana.vargas@ucb.edu.bo",
+                    color = Color(0xFF60A5FA),
+                    fontSize = 13.sp
+                )
+
+                Text(
+                    text = "Estudiante • Comunidad UCB",
+                    color = grayText,
+                    fontSize = 12.sp
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Button(
+                    onClick = { },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text("✏️ Editar perfil", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // SECCIÓN MI PARTICIPACIÓN
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Mi participación", color = grayText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = cardColor
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        val initials = currentUser?.fullName?.take(2)?.uppercase() ?: "UCB"
-                        Text(initials, color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                        Text(
-                            text = currentUser?.fullName ?: "Estudiante UCB",
-                            color = textColor,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            text = currentUser?.email ?: "estudiante@ucb.edu.bo",
-                            color = Color(0xFF60A5FA),
-                            fontSize = 12.sp
-                        )
-                        Text(
-                            text = "Carné UCB: ${currentUser?.studentIdCard ?: "784210"}",
-                            color = grayText,
-                            fontSize = 11.sp
-                        )
-                        Surface(
-                            shape = RoundedCornerShape(6.dp),
-                            color = Color(0xFF166534),
-                            modifier = Modifier.padding(top = 4.dp)
+                        Text("${reportsList.size}", color = textColor, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold, fontSize = 28.sp)
+                        Text("Reportes totales aportados", color = grayText, fontSize = 12.sp)
+
+                        Divider(color = Color(0xFF1E293B))
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onOpenMyReports() },
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Text(
-                                text = "Comunidad Verificada UCB",
-                                color = Color.White,
-                                fontSize = 10.sp,
-                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Text("📋", fontSize = 16.sp)
+                                Text("Mis reportes", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                            }
+                            Text(">", color = grayText, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }
             }
 
-            // Tarjeta de participación
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(16.dp),
-                color = surfaceColor
+            Spacer(modifier = Modifier.height(20.dp))
+
+            // SECCIÓN MI CUENTA
+            Column(
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth()
             ) {
-                Column(modifier = Modifier.padding(18.dp)) {
-                    Text("Aportes a la seguridad del campus", color = grayText, fontSize = 12.sp)
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "${currentUser?.participationCount ?: 1} Reportes aportados",
-                        color = textColor,
-                        style = MaterialTheme.typography.headlineSmall,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "Carrera: ${currentUser?.career ?: "Ingeniería de Sistemas"}",
-                        color = grayText,
-                        fontSize = 12.sp,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                    Text(
-                        text = "Campus: ${currentUser?.campus ?: "Campus Tupuraya (Cochabamba)"}",
-                        color = grayText,
-                        fontSize = 12.sp
-                    )
+                Text("Mi cuenta", color = grayText, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = cardColor
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        ProfileSettingItem(icon = "👤", title = "Cuenta y seguridad", subtitle = "Correo y acceso")
+                        Divider(color = Color(0xFF1E293B))
+                        ProfileSettingItem(icon = "🛡️", title = "Privacidad", subtitle = "Controla la información que compartes")
+                        Divider(color = Color(0xFF1E293B))
+                        ProfileSettingItem(icon = "🔔", title = "Notificaciones", subtitle = "Alertas y reportes")
+                        Divider(color = Color(0xFF1E293B))
+                        ProfileSettingItem(icon = "❓", title = "Ayuda y soporte", subtitle = "Estamos para ayudarte")
+                    }
                 }
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            Spacer(modifier = Modifier.height(24.dp))
 
-            // Botón de cerrar sesión
-            Button(
+            // BOTÓN DE CERRAR SESIÓN
+            OutlinedButton(
                 onClick = {
                     AppStateRepository.logout()
                     onLogout()
@@ -144,11 +207,61 @@ fun UserProfileScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
-                colors = ButtonDefaults.buttonColors(containerColor = Color.Red.copy(alpha = 0.2f)),
-                shape = RoundedCornerShape(25.dp)
+                shape = RoundedCornerShape(14.dp),
+                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155))
             ) {
-                Text("Cerrar sesión", color = Color.Red, fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text("🚪", fontSize = 16.sp)
+                    Text("Cerrar sesión", color = Color.White, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            Text(
+                text = "Comunidad UCB • Versión 1.0.0",
+                color = Color(0xFF475569),
+                fontSize = 11.sp,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun ProfileSettingItem(
+    icon: String,
+    title: String,
+    subtitle: String
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { }
+            .padding(vertical = 10.dp, horizontal = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .background(Color(0xFF132238), shape = RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(icon, fontSize = 16.sp)
+            }
+            Column {
+                Text(title, color = Color.White, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(subtitle, color = Color(0xFF94A3B8), fontSize = 11.sp)
             }
         }
+        Text(">", color = Color(0xFF94A3B8), fontSize = 16.sp, fontWeight = FontWeight.Bold)
     }
 }
