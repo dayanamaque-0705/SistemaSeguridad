@@ -1,31 +1,40 @@
-This is a Kotlin Multiplatform project targeting Android, iOS.
+# UCB Segura - Sistema de Monitoreo y Alertas de Seguridad
 
-* [/iosApp](./iosApp/iosApp) contains an iOS application. Even if you’re sharing your UI with Compose Multiplatform,
-  you need this entry point for your iOS app. This is also where you should add SwiftUI code for your project.
+**Universidad Católica Boliviana San Pablo • Campus Tupuraya (Gestión 2026)**
 
-* [/shared](./shared/src) is for code that will be shared across your Compose Multiplatform applications.
-  It contains several subfolders:
-  - [commonMain](./shared/src/commonMain/kotlin) is for code that’s common for all targets.
-  - Other folders are for Kotlin code that will be compiled for only the platform indicated in the folder name.
-    For example, if you want to use Apple’s CoreCrypto for the iOS part of your Kotlin app,
-    the [iosMain](./shared/src/iosMain/kotlin) folder would be the right place for such calls.
-    Similarly, if you want to edit the Desktop (JVM) specific part, the [jvmMain](./shared/src/jvmMain/kotlin)
-    folder is the appropriate location.
-
-### Running the apps
-
-Use the run configurations provided by the run widget in your IDE's toolbar. You can also use these commands and options:
-
-- Android app: `./gradlew :androidApp:assembleDebug`
-- iOS app: open the [/iosApp](./iosApp) directory in Xcode and run it from there.
-
-### Running tests
-
-Use the run button in your IDE's editor gutter, or run tests using Gradle tasks:
-
-- Android tests: `./gradlew :shared:testAndroidHostTest`
-- iOS tests: `./gradlew :shared:iosSimulatorArm64Test`
+UCB Segura es un sistema de monitoreo y emisión de alertas de seguridad en tiempo real diseñado para estudiantes universitarios en las zonas circundantes del campus Tupuraya de la UCB Cochabamba.
 
 ---
 
-Learn more about [Kotlin Multiplatform](https://www.jetbrains.com/help/kotlin-multiplatform-dev/get-started.html)…
+## 📌 Funcionalidades Principales
+
+1. **🔐 Autenticación y Registro Institucional Exclusivo**:
+   - Registro restringido únicamente a direcciones de correo institucional UCB (`@ucb.edu.bo`, `@estudiantes.ucb.edu.bo`, `@est.ucb.edu.bo`, `@cba.ucb.edu.bo`).
+   - Acceso seguro mediante contraseña y carné institucional UCB.
+
+2. **🗺️ Mapa Interactivo de Zonas de Riesgo en Vivo**:
+   - Mapa nítido renderizado con **OpenStreetMap (osmdroid)**.
+   - Polígonos de riesgo codificados por colores:
+     - 🔴 **Alto Riesgo**: Pasajes oscuros y vías de alto peligro nocturno.
+     - 🟠 **Riesgo Medio**: Paradas de transporte y zonas con aglomeraciones.
+     - 🟡 **Riesgo Bajo**: Áreas exteriores con precaución estándar.
+     - 🟢 **Zona Segura**: Accesos principales con vigilancia 24/7.
+   - **Punto Azul de Ubicación en Tiempo Real (`📍 Aquí estoy`)** con botón de enfoque GPS.
+
+3. **📋 Módulo de Reportes de Incidentes y Selección en Mapa**:
+   - Emisión de notificaciones sobre *Robo/Asalto*, *Riña*, *Falta de luz* o *Persona sospechosa*.
+   - **Seleccionador de ubicación dinámico en mapa**: Toca cualquier punto del campus para fijar la ubicación exacta con un pin rojo objetivo.
+   - Sincronización instantánea con el mapa de seguridad y la lista de *Mis Reportes*.
+
+4. **🚨 Botón de Pánico (SOS) y Alertas de Emergencia**:
+   - Emisión de alerta de emergencia en tiempo real para notificar a la comunidad UCB.
+   - Rastreo GPS temporal activado exclusivamente durante la emisión de la alerta.
+
+---
+
+## 🛠️ Tecnología y Arquitectura
+
+- **Lenguaje**: Kotlin (Multiplatform / Jetpack Compose Multiplatform)
+- **UI Framework**: Compose Multiplatform & Material Design 3
+- **Mapas**: OpenStreetMap (`org.osmdroid:osmdroid-android`)
+- **Plataformas Soportadas**: Android (Móvil) & Web (Wasm)
