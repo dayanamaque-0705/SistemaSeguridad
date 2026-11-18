@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "279346473398",
+    "firebase_url": "https://ucbsegura-default-rtdb.firebaseio.com",
+    "project_id": "ucbsegura",
+    "storage_bucket": "ucbsegura.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:279346473398:android:d2286d326379c840e1b917",
+        "android_client_info": {
+          "package_name": "org.example.project"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD1pXvL9nTnH-7670-o8tpWQbKd7pRVSm4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
