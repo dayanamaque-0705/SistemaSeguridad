@@ -11,6 +11,9 @@ import kotlinx.coroutines.flow.asStateFlow
 
 object AppStateRepository {
 
+    // Callback para notificar cuando un usuario se registra (sincronización con Firebase)
+    var onUserRegistered: ((User, String) -> Unit)? = null
+
     // 1. REGISTRO Y BASE DE DATOS DE USUARIOS (DBA MEMORIA PERSISTENTE)
     private val registeredUsers = mutableMapOf<String, RegisteredAccount>(
         "estudiante.tupuraya@estudiantes.ucb.edu.bo" to RegisteredAccount(
@@ -193,6 +196,11 @@ object AppStateRepository {
         )
         registeredUsers[cleanEmail] = RegisteredAccount(user, password)
         _currentUser.value = user
+
+        try {
+            onUserRegistered?.invoke(user, password)
+        } catch (_: Exception) {}
+
         return true
     }
 

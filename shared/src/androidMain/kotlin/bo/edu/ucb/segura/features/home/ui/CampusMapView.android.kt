@@ -67,8 +67,8 @@ actual fun CampusMapView(
             MapView(context).apply {
                 setTileSource(OsmFrTileSource)
                 setMultiTouchControls(true)
-                // Coordenadas exactas UCB Campus Tupuraya (Cochabamba)
-                controller.setZoom(17.2)
+                // Coordenadas exactas UCB Campus Tupuraya (Cochabamba) iniciales
+                controller.setZoom(17.5)
                 controller.setCenter(GeoPoint(-17.3714, -66.1432))
             }
         },
@@ -95,23 +95,21 @@ actual fun CampusMapView(
                 mapView.overlays.add(mapEventsOverlay)
             }
 
-            // 1. Capa de Ubicación Actual en Tiempo Real del Estudiante (Punto Azul + Etiqueta "📍 Aquí estoy")
+            // 1. Capa de Ubicación Actual en Tiempo Real del Estudiante con Seguimiento GPS activo
             if (showUserLocation) {
                 try {
                     val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(mapView.context), mapView).apply {
                         enableMyLocation()
+                        enableFollowLocation() // <-- Mantiene el mapa centrado y se mueve en tiempo real al caminar/desplazarse
+                        runOnFirstFix {
+                            mapView.post {
+                                myLocation?.let { geoPoint ->
+                                    mapView.controller.animateTo(geoPoint)
+                                }
+                            }
+                        }
                     }
                     mapView.overlays.add(locationOverlay)
-
-                    // Marcador de apoyo visible "📍 Aquí estoy" cerca a la ubicación de referencia UCB
-                    val userHereMarker = Marker(mapView).apply {
-                        position = GeoPoint(-17.3714, -66.1432)
-                        title = "📍 Aquí estoy"
-                        snippet = "Estudiante UCB en Campus Tupuraya"
-                        setAnchor(Marker.ANCHOR_CENTER, Marker.ANCHOR_BOTTOM)
-                        icon = createUserLocationBitmapDrawable(mapView.context)
-                    }
-                    mapView.overlays.add(userHereMarker)
                 } catch (_: Exception) {
                 }
             }
@@ -175,43 +173,12 @@ actual fun CampusMapView(
     )
 }
 
-private fun createUserLocationBitmapDrawable(context: Context): BitmapDrawable {
-    val density = context.resources.displayMetrics.density
-    val sizePx = (40 * density).toInt()
-    val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
-    val canvas = Canvas(bitmap)
-
-    // Halo azul exterior transparente
-    val haloPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0x442563EB.toInt()
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, haloPaint)
-
-    // Borde exterior blanco
-    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.WHITE
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx * 0.38f, borderPaint)
-
-    // Círculo interior Azul Intenso (Punto Azul GPS)
-    val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = 0xFF2563EB.toInt()
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx * 0.30f, bgPaint)
-
-    return BitmapDrawable(context.resources, bitmap)
-}
-
 private fun createPickerPinBitmapDrawable(context: Context): BitmapDrawable {
     val density = context.resources.displayMetrics.density
     val sizePx = (44 * density).toInt()
     val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    // Pin blanco/rojo de punto seleccionado
     val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = android.graphics.Color.WHITE
         style = Paint.Style.FILL
@@ -248,14 +215,12 @@ private fun createIncidentBitmapDrawable(context: Context, type: String): Bitmap
     val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    // Borde exterior blanco
     val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = android.graphics.Color.WHITE
         style = Paint.Style.FILL
     }
     canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, borderPaint)
 
-    // Círculo interior con el color del riesgo/tipo
     val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = colorInt
         style = Paint.Style.FILL
@@ -263,7 +228,6 @@ private fun createIncidentBitmapDrawable(context: Context, type: String): Bitmap
     val margin = 3 * density
     canvas.drawCircle(sizePx / 2f, sizePx / 2f, (sizePx / 2f) - margin, bgPaint)
 
-    // Dibujar Emoji o Icono central
     val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 18 * density
         textAlign = Paint.Align.CENTER
