@@ -21,6 +21,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import bo.edu.ucb.segura.core.data.AppStateRepository
+import bo.edu.ucb.segura.core.ui.UcbLogo
 import bo.edu.ucb.segura.features.auth.application.ValidateUcbEmailUseCase
 
 @Composable
@@ -29,7 +30,7 @@ fun LoginScreen(
     onNavigateToRegister: () -> Unit
 ) {
     var selectedAuthType by remember { mutableStateOf("EMAIL") } // "EMAIL" or "PHONE"
-    var emailOrPhone by remember { mutableStateOf("estudiante.tupuraya@estudiantes.ucb.edu.bo") }
+    var emailOrPhone by remember { mutableStateOf("") } // Vacío para ingreso manual
     var password by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -96,7 +97,7 @@ fun LoginScreen(
                             .background(Color(0xFF1E3A8A), shape = CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("🛡️", fontSize = 36.sp)
+                        UcbLogo(modifier = Modifier.size(44.dp))
                     }
                 }
             }
@@ -143,7 +144,7 @@ fun LoginScreen(
                             )
                             .clickable {
                                 selectedAuthType = "EMAIL"
-                                emailOrPhone = "estudiante.tupuraya@estudiantes.ucb.edu.bo"
+                                emailOrPhone = ""
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -165,7 +166,7 @@ fun LoginScreen(
                             )
                             .clickable {
                                 selectedAuthType = "PHONE"
-                                emailOrPhone = "72910482"
+                                emailOrPhone = ""
                             },
                         contentAlignment = Alignment.Center
                     ) {
@@ -326,13 +327,13 @@ fun RegisterScreen(
     onRegisterSuccess: () -> Unit,
     onNavigateToLogin: () -> Unit
 ) {
-    var fullName by remember { mutableStateOf("Mariana Vargas") }
-    var email by remember { mutableStateOf("mariana.vargas@ucb.edu.bo") }
-    var phone by remember { mutableStateOf("72910482") }
+    var fullName by remember { mutableStateOf("") } // Vacío para ingreso manual
+    var email by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var confirmPassword by remember { mutableStateOf("") }
     var passwordVisible by remember { mutableStateOf(false) }
-    var acceptedTerms by remember { mutableStateOf(true) }
+    var acceptedTerms by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     val backgroundColor = Color(0xFF07111E)
@@ -404,7 +405,7 @@ fun RegisterScreen(
                             .background(Color(0xFF1E3A8A), shape = CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("🛡️", fontSize = 32.sp)
+                        UcbLogo(modifier = Modifier.size(40.dp))
                     }
                 }
             }
@@ -452,7 +453,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = fullName,
                     onValueChange = { fullName = it; errorMessage = null },
-                    placeholder = { Text("Mariana Vargas", color = Color(0xFF64748B)) },
+                    placeholder = { Text("Ej: Juan Pérez", color = Color(0xFF64748B)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -470,7 +471,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = email,
                     onValueChange = { email = it; errorMessage = null },
-                    placeholder = { Text("mariana.vargas@ucb.edu.bo", color = Color(0xFF64748B)) },
+                    placeholder = { Text("juan.perez@estudiantes.ucb.edu.bo", color = Color(0xFF64748B)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(
@@ -488,7 +489,7 @@ fun RegisterScreen(
                 OutlinedTextField(
                     value = phone,
                     onValueChange = { phone = it; errorMessage = null },
-                    placeholder = { Text("72910482", color = Color(0xFF64748B)) },
+                    placeholder = { Text("70000000", color = Color(0xFF64748B)) },
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(12.dp),
                     colors = OutlinedTextFieldDefaults.colors(

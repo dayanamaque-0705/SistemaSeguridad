@@ -8,5 +8,6 @@ data class ReportModel(
     val status: String,        // "En seguimiento", "Resuelto", "Activo"
     val timestamp: String,
     val latitude: Double = -17.3714,
-    val longitude: Double = -66.1432
+    val longitude: Double = -66.1432,
+    val createdAtMillis: Long = 0L
 )

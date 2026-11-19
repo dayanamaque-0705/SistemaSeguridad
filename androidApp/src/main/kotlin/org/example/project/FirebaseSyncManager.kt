@@ -3,13 +3,21 @@ package org.example.project
 import android.content.Context
 import android.util.Log
 import bo.edu.ucb.segura.core.data.AppStateRepository
+import bo.edu.ucb.segura.core.data.getCurrentTimeMillis
+import bo.edu.ucb.segura.features.home.model.IncidentMarker
+import bo.edu.ucb.segura.features.reports.model.ReportModel
 import com.google.firebase.FirebaseApp
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
 import com.google.firebase.database.FirebaseDatabase
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.FirebaseFirestore
 
 /**
- * Gestor de conexión y sincronización de colecciones (tablas) con Firebase
- * utilizando la configuración de google-services.json (Proyecto: ucbsegura).
+ * Gestor de conexión y sincronización con Firebase (Firestore & Realtime Database).
+ * Separa claramente la arquitectura solicitada:
+ * - risk_points: Puntos de riesgo estructurales / preventivos en Tupuraya y Queru Queru.
+ * - reports: Reportes de incidentes generados en tiempo real por los estudiantes (compartidos entre usuarios).
  */
 object FirebaseSyncManager {
     private const val TAG = "FirebaseSyncManager"
@@ -23,7 +31,7 @@ object FirebaseSyncManager {
             val db = FirebaseFirestore.getInstance()
             val rtdb = FirebaseDatabase.getInstance("https://ucbsegura-default-rtdb.firebaseio.com")
 
-            // Registrar callback para cuando un estudiante cree una cuenta nueva y se registre en Firebase Realtime DB y Firestore
+            // 1. Sincronizar nuevo usuario registrado
             AppStateRepository.onUserRegistered = { user, _ ->
                 try {
                     val userMap = mapOf(
@@ -39,47 +47,155 @@ object FirebaseSyncManager {
                     )
                     val safeKey = user.email.replace(".", "_").replace("@", "_")
 
-                    // Guardar en Firestore (colección "users")
                     db.collection("users").document(user.email).set(userMap)
-                        .addOnSuccessListener { Log.d(TAG, "Nuevo estudiante guardado en Firestore: ${user.email}") }
-                        .addOnFailureListener { e -> Log.e(TAG, "Error guardando estudiante en Firestore", e) }
+                        .addOnSuccessListener { Log.d(TAG, "Usuario registrado guardado en Firestore: ${user.email}") }
 
-                    // Guardar en Realtime Database (tabla "users")
                     rtdb.getReference("users/$safeKey").setValue(userMap)
-                        .addOnSuccessListener { Log.d(TAG, "Nuevo estudiante guardado en Realtime Database: ${user.email}") }
+                        .addOnSuccessListener { Log.d(TAG, "Usuario registrado guardado en Realtime DB: ${user.email}") }
 
                 } catch (e: Exception) {
-                    Log.e(TAG, "Error al sincronizar nuevo usuario con Firebase", e)
+                    Log.e(TAG, "Error syncing registered user", e)
                 }
             }
 
-            // 1. Sincronizar usuario inicial por defecto
-            val defaultUser = mapOf(
-                "id" to "ucb-est-2026-7842",
-                "fullName" to "Estudiante UCB Tupuraya",
-                "email" to "estudiante.tupuraya@estudiantes.ucb.edu.bo",
-                "phoneNumber" to "72910482",
-                "studentIdCard" to "784210",
-                "career" to "Ingeniería de Sistemas",
-                "campus" to "Campus Tupuraya (Cochabamba)",
-                "isVerified" to true,
-                "participationCount" to 5
-            )
-            db.collection("users").document("estudiante.tupuraya@estudiantes.ucb.edu.bo").set(defaultUser)
-            rtdb.getReference("users/estudiante_tupuraya").setValue(defaultUser)
+            // 2. Sincronizar reportes de incidentes en tiempo real (reports)
+            AppStateRepository.onReportCreated = { report ->
+                try {
+                    val reportMap = mapOf(
+                        "id" to report.id,
+                        "category" to report.type,
+                        "description" to report.description,
+                        "location" to report.location,
+                        "status" to report.status,
+                        "timestamp" to report.timestamp,
+                        "latitude" to report.latitude,
+                        "longitude" to report.longitude,
+                        "userEmail" to (AppStateRepository.currentUser.value?.email ?: "anonimo"),
+                        "createdAtMillis" to report.createdAtMillis
+                    )
+                    db.collection("reports").document(report.id).set(reportMap)
+                    rtdb.getReference("reports/${report.id}").setValue(reportMap)
+                    Log.d(TAG, "Reporte sincronizado con Firebase (reports): ${report.id}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error syncing report", e)
+                }
+            }
 
-            // 2. Sincronizar zonas de riesgo iniciales
-            val zones = listOf(
-                mapOf("id" to "zone_1", "name" to "Pasaje Este UCB (Calle Oruro)", "riskLevel" to "ALTO", "centerLat" to -17.3725, "centerLng" to -66.1425, "radiusMeters" to 65.0),
-                mapOf("id" to "zone_2", "name" to "Cruce Av. Circunvalación & Atahuallpa", "riskLevel" to "ALTO", "centerLat" to -17.3698, "centerLng" to -66.1440, "radiusMeters" to 80.0),
-                mapOf("id" to "zone_6", "name" to "Entrada Principal UCB (Tupuraya)", "riskLevel" to "SEGURA", "centerLat" to -17.3714, "centerLng" to -66.1432, "radiusMeters" to 45.0)
-            )
-            zones.forEach { zone -> db.collection("danger_zones").document(zone["id"].toString()).set(zone) }
-            rtdb.getReference("danger_zones").setValue(zones)
+            // 3. Escuchar reportes en tiempo real desde Firebase para que todos los usuarios los vean compartidos
+            rtdb.getReference("reports").addValueEventListener(object : ValueEventListener {
+                override fun onDataChange(snapshot: DataSnapshot) {
+                    try {
+                        val remoteReports = mutableListOf<ReportModel>()
+                        val remoteMarkers = mutableListOf<IncidentMarker>()
+                        for (child in snapshot.children) {
+                            val map = child.value as? Map<*, *> ?: continue
+                            val id = map["id"]?.toString() ?: continue
+                            val type = map["category"]?.toString() ?: map["type"]?.toString() ?: "ROBO"
+                            val desc = map["description"]?.toString() ?: ""
+                            val loc = map["location"]?.toString() ?: ""
+                            val status = map["status"]?.toString() ?: "Activo"
+                            val time = map["timestamp"]?.toString() ?: "Hace un momento"
+                            val lat = (map["latitude"] as? Number)?.toDouble() ?: -17.3714
+                            val lng = (map["longitude"] as? Number)?.toDouble() ?: -66.1432
+                            val createdMillis = (map["createdAtMillis"] as? Number)?.toLong() ?: getCurrentTimeMillis()
 
-            Log.d(TAG, "Conexión a Firebase Firestore & Realtime Database inicializada exitosamente.")
+                            val report = ReportModel(
+                                id = id,
+                                type = type,
+                                description = desc,
+                                location = loc,
+                                status = status,
+                                timestamp = time,
+                                latitude = lat,
+                                longitude = lng,
+                                createdAtMillis = createdMillis
+                            )
+                            val marker = IncidentMarker(
+                                id = "inc_$id",
+                                title = "Reporte: $type",
+                                type = type,
+                                latitude = lat,
+                                longitude = lng,
+                                timestamp = time,
+                                description = desc,
+                                createdAtMillis = createdMillis
+                            )
+                            remoteReports.add(report)
+                            remoteMarkers.add(marker)
+                        }
+                        if (remoteReports.isNotEmpty()) {
+                            AppStateRepository.syncReportsFromRemote(remoteReports, remoteMarkers)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Error parsing remote reports", e)
+                    }
+                }
+
+                override fun onCancelled(error: DatabaseError) {
+                    Log.e(TAG, "Reports listener cancelled", error.toException())
+                }
+            })
+
+            // 4. Sincronizar Alertas de Pánico (SOS)
+            AppStateRepository.onPanicAlertTriggered = { alert ->
+                try {
+                    val alertMap = mapOf(
+                        "id" to alert.id,
+                        "title" to alert.title,
+                        "type" to alert.type,
+                        "latitude" to alert.latitude,
+                        "longitude" to alert.longitude,
+                        "timestamp" to alert.timestamp,
+                        "description" to alert.description,
+                        "userEmail" to (AppStateRepository.currentUser.value?.email ?: "anonimo")
+                    )
+                    db.collection("panic_alerts").document(alert.id).set(alertMap)
+                    rtdb.getReference("panic_alerts/${alert.id}").setValue(alertMap)
+                    Log.d(TAG, "Alerta SOS sincronizada con Firebase: ${alert.id}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Error syncing panic alert", e)
+                }
+            }
+
+            // 5. Inicializar Puntos de Riesgo estructurales (risk_points) oficiales: Tupuraya y Queru Queru
+            val riskPoints = listOf(
+                mapOf(
+                    "id" to "zone_tupuraya_bajo",
+                    "zone" to "Campus Tupuraya",
+                    "title" to "Campus UCB Tupuraya (Zona Baja)",
+                    "motivoRiesgo" to "Área interna con vigilancia y bajo índice de incidentes.",
+                    "level" to "BAJO",
+                    "latitude" to -17.3714,
+                    "longitude" to -66.1432
+                ),
+                mapOf(
+                    "id" to "zone_tupuraya_medio",
+                    "zone" to "Campus Tupuraya",
+                    "title" to "Pasaje Este UCB (Zona Media)",
+                    "motivoRiesgo" to "Zona lateral con reporte ocasional de objetos descuidados.",
+                    "level" to "MEDIO",
+                    "latitude" to -17.3725,
+                    "longitude" to -66.1425
+                ),
+                mapOf(
+                    "id" to "zone_queruqueru_alto",
+                    "zone" to "Queru Queru",
+                    "title" to "Zona Queru Queru (Alto Riesgo)",
+                    "motivoRiesgo" to "Sector con reportes frecuentes de robos y escasa iluminación nocturna.",
+                    "level" to "ALTO",
+                    "latitude" to -17.3650,
+                    "longitude" to -66.1350
+                )
+            )
+
+            riskPoints.forEach { point ->
+                db.collection("risk_points").document(point["id"].toString()).set(point)
+            }
+            rtdb.getReference("risk_points").setValue(riskPoints)
+
+            Log.d(TAG, "Firebase sincronizado: risk_points y reports (con tiempo de vida de 10h y sincronización en vivo) configurados.")
         } catch (e: Exception) {
-            Log.e(TAG, "Error al inicializar Firebase", e)
+            Log.e(TAG, "Error initializing FirebaseSyncManager", e)
         }
     }
 }

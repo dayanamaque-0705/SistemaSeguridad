@@ -37,7 +37,8 @@ fun ReportIncidentScreen(
     // Ubicación seleccionada en tiempo real
     var selectedLat by remember { mutableStateOf(-17.3718) }
     var selectedLng by remember { mutableStateOf(-66.1435) }
-    var locationName by remember { mutableStateOf("Mi ubicación actual") }
+    var locationName by remember { mutableStateOf("Campus Tupuraya UCB") }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Colores basados en el diseño oscuro institucional
     val backgroundColor = Color(0xFF07111E).copy(alpha = 0.85f)
@@ -84,7 +85,7 @@ fun ReportIncidentScreen(
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = "¿Qué está ocurriendo?",
+                        text = "Áreas activas: Tupuraya y Queru Queru",
                         color = grayText,
                         fontSize = 13.sp
                     )
@@ -97,6 +98,23 @@ fun ReportIncidentScreen(
                         .background(Color(0xFF1E293B), shape = CircleShape)
                 ) {
                     Text("✕", color = textColor, fontSize = 16.sp)
+                }
+            }
+
+            // NOTIFICACIÓN DE ERROR / FUERA DE RANGO
+            errorMessage?.let { msg ->
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = Color(0xFF7F1D1D),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text(
+                        text = msg,
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(10.dp),
+                        fontWeight = FontWeight.SemiBold
+                    )
                 }
             }
 
@@ -190,17 +208,22 @@ fun ReportIncidentScreen(
                             Text("📍", fontSize = 18.sp)
                         }
                         Column {
-                            Text("Mi ubicación actual", color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            Text("Ubicación del incidente", color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                             Text(locationName, color = grayText, fontSize = 11.sp)
                         }
                     }
-                    Text(">", color = grayText, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    Text("Cambiar >", color = Color(0xFF60A5FA), fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
 
             // BOTÓN DE ENVIAR REPORTE
             Button(
                 onClick = {
+                    if (!AppStateRepository.isWithinActiveRange(selectedLat, selectedLng)) {
+                        errorMessage = "⚠️ Reporte fuera de rango: Las únicas zonas de cobertura activa son Campus Tupuraya y Queru Queru."
+                        return@Button
+                    }
+                    errorMessage = null
                     AppStateRepository.createReport(
                         type = selectedType,
                         description = description,
@@ -226,7 +249,7 @@ fun ReportIncidentScreen(
             }
 
             Text(
-                text = "Los reportes son visibles para la comunidad UCB.",
+                text = "Los reportes fuera de Tupuraya y Queru Queru no están permitidos.",
                 color = grayText,
                 fontSize = 11.sp,
                 modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -250,7 +273,7 @@ fun ReportIncidentScreen(
                             onMapTap = { lat, lng ->
                                 selectedLat = lat
                                 selectedLng = lng
-                                locationName = "Punto en mapa (${formatCoord(lat)}, ${formatCoord(lng)})"
+                                locationName = "Punto (${formatCoord(lat)}, ${formatCoord(lng)})"
                             },
                             onZoneClick = { zone ->
                                 selectedLat = zone.centerLat
@@ -260,7 +283,7 @@ fun ReportIncidentScreen(
                             onMarkerClick = { marker ->
                                 selectedLat = marker.latitude
                                 selectedLng = marker.longitude
-                                locationName = "Cerca a: ${marker.title}"
+                                locationName = marker.title
                             }
                         )
 
@@ -279,8 +302,8 @@ fun ReportIncidentScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Column {
-                                    Text("🎯 Toca el mapa para fijar la ubicación", color = textColor, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                                    Text("Mueve el pin rojo para seleccionar el lugar del incidente", color = grayText, fontSize = 11.sp)
+                                    Text("🎯 Selecciona dentro de Tupuraya o Queru Queru", color = textColor, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                                    Text("Toca el mapa para fijar la ubicación del reporte", color = grayText, fontSize = 11.sp)
                                 }
                                 IconButton(onClick = { isPickerMapOpen = false }) {
                                     Text("✕", color = textColor, fontSize = 16.sp)

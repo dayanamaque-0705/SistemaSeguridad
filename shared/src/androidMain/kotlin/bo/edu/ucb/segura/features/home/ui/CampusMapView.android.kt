@@ -11,12 +11,12 @@ import androidx.compose.ui.viewinterop.AndroidView
 import bo.edu.ucb.segura.features.home.model.DangerZone
 import bo.edu.ucb.segura.features.home.model.IncidentMarker
 import org.osmdroid.config.Configuration
-import org.osmdroid.events.MapEventsReceiver
 import org.osmdroid.tileprovider.tilesource.XYTileSource
+import org.osmdroid.util.BoundingBox
 import org.osmdroid.util.GeoPoint
 import org.osmdroid.views.MapView
-import org.osmdroid.views.overlay.MapEventsOverlay
 import org.osmdroid.views.overlay.Marker
+import org.osmdroid.views.overlay.Overlay
 import org.osmdroid.views.overlay.Polygon
 import org.osmdroid.views.overlay.mylocation.GpsMyLocationProvider
 import org.osmdroid.views.overlay.mylocation.MyLocationNewOverlay
@@ -67,8 +67,20 @@ actual fun CampusMapView(
             MapView(context).apply {
                 setTileSource(OsmFrTileSource)
                 setMultiTouchControls(true)
-                // Coordenadas exactas UCB Campus Tupuraya (Cochabamba) iniciales
-                controller.setZoom(17.5)
+
+                // Límites geográficos estrictos (BoundingBox) para Tupuraya y Queru Queru
+                val campusBounds = BoundingBox(
+                    -17.3635, // Norte (Queru Queru / Parque Lincoln)
+                    -66.1355, // Este (Tupuraya / Gral. Galindo)
+                    -17.3785, // Sur (Río Rocha / Av. Uyuni / Circunvalación)
+                    -66.1510  // Oeste (Av. Pando / Libertador Bolívar)
+                )
+                setScrollableAreaLimitDouble(campusBounds)
+                minZoomLevel = 15.5
+                maxZoomLevel = 19.0
+
+                // Centro inicial Campus Tupuraya (Cochabamba)
+                controller.setZoom(17.0)
                 controller.setCenter(GeoPoint(-17.3714, -66.1432))
             }
         },
@@ -80,19 +92,17 @@ actual fun CampusMapView(
                 mapView.controller.animateTo(GeoPoint(lat, lng))
             }
 
-            // 0. Capturar toques en cualquier punto del mapa para seleccionar ubicación
+            // 0. Capturar toques instantáneos (onSingleTapUp) en cualquier punto del mapa para seleccionar ubicación sin retraso
             if (onMapTap != null) {
-                val mapEventsOverlay = MapEventsOverlay(object : MapEventsReceiver {
-                    override fun singleTapConfirmedHelper(p: GeoPoint): Boolean {
-                        onMapTap.invoke(p.latitude, p.longitude)
+                val instantTapOverlay = object : Overlay() {
+                    override fun onSingleTapUp(e: android.view.MotionEvent, mapView: MapView): Boolean {
+                        val projection = mapView.projection
+                        val geoPoint = projection.fromPixels(e.x.toInt(), e.y.toInt()) as GeoPoint
+                        onMapTap.invoke(geoPoint.latitude, geoPoint.longitude)
                         return true
                     }
-                    override fun longPressHelper(p: GeoPoint): Boolean {
-                        onMapTap.invoke(p.latitude, p.longitude)
-                        return true
-                    }
-                })
-                mapView.overlays.add(mapEventsOverlay)
+                }
+                mapView.overlays.add(instantTapOverlay)
             }
 
             // 1. Capa de Ubicación Actual en Tiempo Real del Estudiante con Seguimiento GPS activo
@@ -100,7 +110,7 @@ actual fun CampusMapView(
                 try {
                     val locationOverlay = MyLocationNewOverlay(GpsMyLocationProvider(mapView.context), mapView).apply {
                         enableMyLocation()
-                        enableFollowLocation() // <-- Mantiene el mapa centrado y se mueve en tiempo real al caminar/desplazarse
+                        enableFollowLocation() // Mantiene el mapa centrado y se mueve en tiempo real al caminar/desplazarse
                         runOnFirstFix {
                             mapView.post {
                                 myLocation?.let { geoPoint ->
@@ -126,7 +136,23 @@ actual fun CampusMapView(
                 mapView.overlays.add(pickerMarker)
             }
 
-            // 3. Dibujar Polígonos/Círculos de Zonas de Riesgo
+            // 3. Dibujar el Rectángulo Perimetral (BoundingBox) con Línea Negra Gruesa
+            val boundaryPolygon = Polygon(mapView).apply {
+                val boundsPoints = listOf(
+                    GeoPoint(-17.3635, -66.1510), // Noroeste
+                    GeoPoint(-17.3635, -66.1355), // Noreste
+                    GeoPoint(-17.3785, -66.1355), // Sureste
+                    GeoPoint(-17.3785, -66.1510)  // Suroeste
+                )
+                points = boundsPoints
+                fillPaint.color = 0x0A2563EB.toInt()
+                outlinePaint.color = android.graphics.Color.BLACK
+                outlinePaint.strokeWidth = 8f
+                title = "Perímetro Activo UCB Segura (Tupuraya & Queru Queru)"
+            }
+            mapView.overlays.add(boundaryPolygon)
+
+            // 4. Dibujar Polígonos de Zonas de Riesgo (SIN BORDES en los círculos de riesgo)
             val filteredZones = if (selectedRiskFilter == null || selectedRiskFilter == "TODOS") {
                 dangerZones
             } else {
@@ -138,8 +164,8 @@ actual fun CampusMapView(
                     val center = GeoPoint(zone.centerLat, zone.centerLng)
                     points = Polygon.pointsAsCircle(center, zone.radiusMeters)
                     fillPaint.color = zone.riskLevel.argbFill.toInt()
-                    outlinePaint.color = zone.riskLevel.argbBorder.toInt()
-                    outlinePaint.strokeWidth = 5f
+                    outlinePaint.strokeWidth = 0f // SIN BORDES EN LOS CÍRCULOS DE RIESGO
+                    outlinePaint.color = android.graphics.Color.TRANSPARENT
                     title = zone.name
                     snippet = "${zone.riskLevel.label}\n${zone.description}"
                     setOnClickListener { poly, _, _ ->
@@ -151,7 +177,7 @@ actual fun CampusMapView(
                 mapView.overlays.add(polygon)
             }
 
-            // 4. Dibujar Marcadores de Incidentes
+            // 5. Dibujar Marcadores de Incidentes
             incidentMarkers.forEach { incident ->
                 val marker = Marker(mapView).apply {
                     position = GeoPoint(incident.latitude, incident.longitude)
@@ -215,19 +241,14 @@ private fun createIncidentBitmapDrawable(context: Context, type: String): Bitmap
     val bitmap = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
 
-    val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = android.graphics.Color.WHITE
-        style = Paint.Style.FILL
-    }
-    canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, borderPaint)
-
+    // Círculo de fondo con el color de riesgo (sin bordes)
     val bgPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = colorInt
         style = Paint.Style.FILL
     }
-    val margin = 3 * density
-    canvas.drawCircle(sizePx / 2f, sizePx / 2f, (sizePx / 2f) - margin, bgPaint)
+    canvas.drawCircle(sizePx / 2f, sizePx / 2f, sizePx / 2f, bgPaint)
 
+    // Dibujar Emoji o Icono central
     val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         textSize = 18 * density
         textAlign = Paint.Align.CENTER

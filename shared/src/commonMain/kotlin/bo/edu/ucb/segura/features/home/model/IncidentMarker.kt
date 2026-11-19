@@ -7,5 +7,6 @@ data class IncidentMarker(
     val latitude: Double,
     val longitude: Double,
     val timestamp: String,
-    val description: String = ""
+    val description: String = "",
+    val createdAtMillis: Long = 0L
 )

@@ -19,6 +19,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import bo.edu.ucb.segura.core.data.AppStateRepository
+import bo.edu.ucb.segura.core.ui.UcbLogo
 import bo.edu.ucb.segura.features.home.model.DangerZone
 import bo.edu.ucb.segura.features.home.model.IncidentMarker
 import bo.edu.ucb.segura.features.home.model.RiskLevel
@@ -102,7 +103,7 @@ fun HomeScreen(
                             .background(Color(0xFF1E3A8A), shape = CircleShape),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("🛡️", fontSize = 16.sp)
+                        UcbLogo(modifier = Modifier.size(20.dp))
                     }
                     Text(
                         text = "UCB Segura",

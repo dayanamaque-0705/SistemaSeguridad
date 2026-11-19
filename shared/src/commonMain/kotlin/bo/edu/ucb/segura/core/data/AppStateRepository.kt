@@ -9,12 +9,18 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
+expect fun getCurrentTimeMillis(): Long
+
 object AppStateRepository {
 
-    // Callback para notificar cuando un usuario se registra (sincronización con Firebase)
+    // Callbacks para sincronización con Firebase (Usuarios y Reportes/Alertas)
     var onUserRegistered: ((User, String) -> Unit)? = null
+    var onReportCreated: ((ReportModel) -> Unit)? = null
+    var onPanicAlertTriggered: ((IncidentMarker) -> Unit)? = null
 
-    // 1. REGISTRO Y BASE DE DATOS DE USUARIOS (DBA MEMORIA PERSISTENTE)
+    private const val TEN_HOURS_MS = 10 * 60 * 60 * 1000L
+
+    // 1. REGISTRO Y BASE DE DATOS DE USUARIOS
     private val registeredUsers = mutableMapOf<String, RegisteredAccount>(
         "estudiante.tupuraya@estudiantes.ucb.edu.bo" to RegisteredAccount(
             user = User(
@@ -35,146 +41,176 @@ object AppStateRepository {
     private val _currentUser = MutableStateFlow<User?>(registeredUsers["estudiante.tupuraya@estudiantes.ucb.edu.bo"]?.user)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
-    // 2. INCIDENTES Y ZONAS DE RIESGO DE MAPA TUPURAYA
+    // 2. ZONAS DE RIESGO Y REPORTES INICIALES
     private val initialDangerZones = listOf(
         DangerZone(
-            id = "zone_1",
-            name = "Pasaje Este UCB (Calle Oruro)",
-            description = "Zona con escaso alumbrado nocturno. Reportes frecuentes de robos de objetos personales entre 19:00 y 22:00 hrs.",
-            centerLat = -17.3725,
-            centerLng = -66.1425,
-            radiusMeters = 65.0,
-            riskLevel = RiskLevel.ALTO
-        ),
-        DangerZone(
-            id = "zone_2",
-            name = "Cruce Av. Circunvalación & Atahuallpa",
-            description = "Alto tráfico vehicular y despojos por motocicletas al paso.",
-            centerLat = -17.3698,
-            centerLng = -66.1440,
-            radiusMeters = 80.0,
-            riskLevel = RiskLevel.ALTO
-        ),
-        DangerZone(
-            id = "zone_3",
-            name = "Calle Oquendo & Calama (Parada de Micros)",
-            description = "Zona de aglomeración. Mantener pertenencias al frente.",
-            centerLat = -17.3732,
-            centerLng = -66.1445,
-            radiusMeters = 55.0,
-            riskLevel = RiskLevel.MEDIO
-        ),
-        DangerZone(
-            id = "zone_4",
-            name = "Ciclovía Este / Sector Parque",
-            description = "Tramo oscuro y poco transitado durante la noche. Transitar acompañado.",
-            centerLat = -17.3705,
-            centerLng = -66.1415,
-            radiusMeters = 70.0,
-            riskLevel = RiskLevel.MEDIO
-        ),
-        DangerZone(
-            id = "zone_5",
-            name = "Plaza de Comidas Exterior",
-            description = "Precaución con laptops y celulares descuidados en mesas exteriores.",
-            centerLat = -17.3718,
-            centerLng = -66.1438,
-            radiusMeters = 40.0,
+            id = "zone_tupuraya_bajo",
+            name = "Campus UCB Tupuraya (Zona Baja)",
+            description = "Área interna con vigilancia y bajo índice de incidentes.",
+            centerLat = -17.3714,
+            centerLng = -66.1432,
+            radiusMeters = 75.0,
             riskLevel = RiskLevel.BAJO
         ),
         DangerZone(
-            id = "zone_6",
-            name = "Entrada Principal UCB (Tupuraya)",
-            description = "Punto de control seguro con vigilancia privada 24/7 y cámaras de monitoreo.",
-            centerLat = -17.3714,
-            centerLng = -66.1432,
-            radiusMeters = 45.0,
-            riskLevel = RiskLevel.SEGURA
+            id = "zone_tupuraya_medio",
+            name = "Pasaje Este UCB (Zona Media)",
+            description = "Zona lateral con reporte ocasional de objetos descuidados.",
+            centerLat = -17.3725,
+            centerLng = -66.1425,
+            radiusMeters = 65.0,
+            riskLevel = RiskLevel.MEDIO
+        ),
+        DangerZone(
+            id = "zone_queruqueru_alto",
+            name = "Zona Queru Queru (Alto Riesgo)",
+            description = "Sector con reportes frecuentes de robos y escasa iluminación nocturna.",
+            centerLat = -17.3650,
+            centerLng = -66.1350,
+            radiusMeters = 100.0,
+            riskLevel = RiskLevel.ALTO
         )
     )
 
-    private val initialIncidentMarkers = mutableListOf(
-        IncidentMarker(
-            id = "inc_1",
-            title = "Robo de celular",
-            type = "ROBO",
-            latitude = -17.3726,
-            longitude = -66.1424,
-            timestamp = "Hace 20 min",
-            description = "Sujeto en motocicleta sustrajo teléfono a estudiante."
-        ),
-        IncidentMarker(
-            id = "inc_2",
-            title = "Persona sospechosa",
-            type = "SOSPECHOSO",
-            latitude = -17.3730,
-            longitude = -66.1442,
-            timestamp = "Hace 1 hora",
-            description = "Persona observando estacionamiento de vehículos."
-        ),
-        IncidentMarker(
-            id = "inc_3",
-            title = "Falta de alumbrado",
-            type = "FALTA_LUZ",
-            latitude = -17.3708,
-            longitude = -66.1418,
-            timestamp = "Ayer 20:30",
-            description = "Postes de luz apagados en calle lateral."
-        ),
-        IncidentMarker(
-            id = "inc_4",
-            title = "Altercado / Riña",
-            type = "RINA",
-            latitude = -17.3697,
-            longitude = -66.1436,
-            timestamp = "Hace 3 horas",
-            description = "Discusión fuerte en parada de transporte público."
-        )
-    )
-
-    private val initialReports = mutableListOf(
+    private val allStoredReports = mutableListOf<ReportModel>(
         ReportModel(
             id = "rep_1",
             type = "ROBO",
-            description = "Sujeto en motocicleta sustrajo teléfono a estudiante.",
-            location = "Calle Calama y Oquendo",
+            description = "Sujeto en motocicleta interceptó a estudiante saliendo de clases.",
+            location = "Pasaje Este UCB (Calle Oruro)",
             status = "En seguimiento",
             timestamp = "Hace 20 min",
-            latitude = -17.3726,
-            longitude = -66.1424
+            latitude = -17.3725,
+            longitude = -66.1425,
+            createdAtMillis = getCurrentTimeMillis() - (2 * 60 * 60 * 1000L) // 2 horas
         ),
         ReportModel(
             id = "rep_2",
-            type = "FALTA_LUZ",
-            description = "Postes de luz apagados en calle lateral.",
-            location = "Zona Pasaje Este Campus Tupuraya",
-            status = "Resuelto",
-            timestamp = "Ayer 20:30",
-            latitude = -17.3708,
-            longitude = -66.1418
+            type = "SOSPECHOSO",
+            description = "Individuo observando autos estacionados sin placa.",
+            location = "Campus Tupuraya UCB",
+            status = "Activo",
+            timestamp = "Hace 4 horas",
+            latitude = -17.3710,
+            longitude = -66.1438,
+            createdAtMillis = getCurrentTimeMillis() - (4 * 60 * 60 * 1000L)
         ),
         ReportModel(
             id = "rep_3",
-            type = "SOSPECHOSO",
-            description = "Persona observando estacionamiento de vehículos.",
-            location = "Av. Circunvalación",
-            status = "En seguimiento",
-            timestamp = "Hace 1 hora",
-            latitude = -17.3730,
-            longitude = -66.1442
+            type = "ROBO",
+            description = "Delincuente a pie arrebató bolso a transeúnte.",
+            location = "Zona Queru Queru",
+            status = "Activo",
+            timestamp = "Hace 5 horas",
+            latitude = -17.3650,
+            longitude = -66.1350,
+            createdAtMillis = getCurrentTimeMillis() - (5 * 60 * 60 * 1000L)
         )
     )
 
-    private val _dangerZonesState = MutableStateFlow<List<DangerZone>>(initialDangerZones)
-    val dangerZonesState: StateFlow<List<DangerZone>> = _dangerZonesState.asStateFlow()
+    private val allStoredMarkers = mutableListOf<IncidentMarker>(
+        IncidentMarker(
+            id = "inc_tupuraya_1",
+            title = "Robo de celular en Pasaje Este",
+            type = "ROBO",
+            latitude = -17.3725,
+            longitude = -66.1425,
+            timestamp = "Hace 2 horas",
+            description = "Sujeto en motocicleta interceptó a estudiante.",
+            createdAtMillis = getCurrentTimeMillis() - (2 * 60 * 60 * 1000L)
+        ),
+        IncidentMarker(
+            id = "inc_tupuraya_2",
+            title = "Persona sospechosa en estacionamiento",
+            type = "SOSPECHOSO",
+            latitude = -17.3710,
+            longitude = -66.1438,
+            timestamp = "Hace 4 horas",
+            description = "Individuo observando autos.",
+            createdAtMillis = getCurrentTimeMillis() - (4 * 60 * 60 * 1000L)
+        ),
+        IncidentMarker(
+            id = "inc_queru_1",
+            title = "Arrebato de mochila en parada",
+            type = "ROBO",
+            latitude = -17.3650,
+            longitude = -66.1350,
+            timestamp = "Hace 5 horas",
+            description = "Delincuente a pie.",
+            createdAtMillis = getCurrentTimeMillis() - (5 * 60 * 60 * 1000L)
+        )
+    )
 
-    private val _incidentMarkersState = MutableStateFlow<List<IncidentMarker>>(initialIncidentMarkers)
-    val incidentMarkersState: StateFlow<List<IncidentMarker>> = _incidentMarkersState.asStateFlow()
-
-    private val _reportsState = MutableStateFlow<List<ReportModel>>(initialReports)
+    private val _reportsState = MutableStateFlow<List<ReportModel>>(getValidRecentReports(allStoredReports))
     val reportsState: StateFlow<List<ReportModel>> = _reportsState.asStateFlow()
 
-    // 3. AUTENTICACIÓN Y REGISTRO DE USUARIOS INSTITUCIONALES
+    private val _incidentMarkersState = MutableStateFlow<List<IncidentMarker>>(getValidRecentMarkers(allStoredMarkers))
+    val incidentMarkersState: StateFlow<List<IncidentMarker>> = _incidentMarkersState.asStateFlow()
+
+    private val _dangerZonesState = MutableStateFlow<List<DangerZone>>(computeInitialZones())
+    val dangerZonesState: StateFlow<List<DangerZone>> = _dangerZonesState.asStateFlow()
+
+    private fun getValidRecentMarkers(markers: List<IncidentMarker>): List<IncidentMarker> {
+        val now = getCurrentTimeMillis()
+        // Borrarse de la pantalla luego de 10 horas, pero permanecen en DB
+        return markers.filter { m ->
+            m.createdAtMillis == 0L || (now - m.createdAtMillis <= TEN_HOURS_MS)
+        }
+    }
+
+    private fun getValidRecentReports(reports: List<ReportModel>): List<ReportModel> {
+        val now = getCurrentTimeMillis()
+        // Borrarse de la pantalla luego de 10 horas, pero permanecen en DB
+        return reports.filter { r ->
+            r.createdAtMillis == 0L || (now - r.createdAtMillis <= TEN_HOURS_MS)
+        }
+    }
+
+    // Sincronizar reportes desde Firebase para que todos los usuarios los compartan en tiempo real
+    fun syncReportsFromRemote(remoteReports: List<ReportModel>, remoteMarkers: List<IncidentMarker>) {
+        allStoredReports.clear()
+        allStoredReports.addAll(remoteReports)
+        allStoredMarkers.clear()
+        allStoredMarkers.addAll(remoteMarkers)
+
+        _reportsState.value = getValidRecentReports(allStoredReports)
+        _incidentMarkersState.value = getValidRecentMarkers(allStoredMarkers)
+        updateZoneAndRiskLevels()
+    }
+
+    private fun computeInitialZones(): List<DangerZone> {
+        val reports = _reportsState.value
+        return initialDangerZones.map { zone ->
+            val nearbyReportsCount = reports.count { r ->
+                val dLat = r.latitude - zone.centerLat
+                val dLng = r.longitude - zone.centerLng
+                val dist = kotlin.math.sqrt(dLat * dLat + dLng * dLng) * 111000.0
+                dist <= 500.0
+            }
+            val dynamicRadius = minOf(220.0, zone.radiusMeters + (nearbyReportsCount * 35.0))
+            val newRisk = when {
+                nearbyReportsCount == 0 -> RiskLevel.BAJO
+                nearbyReportsCount == 1 -> RiskLevel.MEDIO
+                else -> RiskLevel.ALTO
+            }
+            zone.copy(radiusMeters = dynamicRadius, riskLevel = newRisk)
+        }
+    }
+
+    private fun updateZoneAndRiskLevels() {
+        _dangerZonesState.value = computeInitialZones()
+    }
+
+    // VALIDACIÓN ESTRICTA DE RANGO GEOGRÁFICO (BoundingBox Tupuraya & Queru Queru)
+    fun isWithinActiveRange(lat: Double, lng: Double): Boolean {
+        val maxLat = -17.3635
+        val minLat = -17.3785
+        val maxLon = -66.1355
+        val minLon = -66.1510
+        return lat in minLat..maxLat && lng in minLon..maxLon
+    }
+
+    // 3. AUTENTICACIÓN Y REGISTRO
     fun registerUser(
         fullName: String,
         email: String,
@@ -246,14 +282,19 @@ object AppStateRepository {
         return Pair(true, null)
     }
 
-    // 4. CREAR REPORTE Y SINCRONIZAR DE INMEDIATO AL MAPA Y A "MIS REPORTES"
+    // 4. CREAR REPORTE (CON BLOQUEO ESTRICTO FUERA DE RANGO)
     fun createReport(
         type: String,
         description: String,
         locationName: String,
         latitude: Double,
         longitude: Double
-    ): ReportModel {
+    ): ReportModel? {
+        if (!isWithinActiveRange(latitude, longitude)) {
+            return null
+        }
+
+        val currentTime = getCurrentTimeMillis()
         val newId = "rep_${(1000..9999).random()}"
         val formattedType = when (type.lowercase()) {
             "robo" -> "ROBO"
@@ -266,12 +307,13 @@ object AppStateRepository {
         val newReport = ReportModel(
             id = newId,
             type = formattedType,
-            description = if (description.isBlank()) "Incidente reportado por estudiante en $locationName" else description,
+            description = if (description.isBlank()) "Incidente reportado en $locationName" else description,
             location = locationName,
             status = "Activo",
-            timestamp = "Hace un momento",
+            timestamp = "Justo ahora",
             latitude = latitude,
-            longitude = longitude
+            longitude = longitude,
+            createdAtMillis = currentTime
         )
 
         val newMarker = IncidentMarker(
@@ -281,39 +323,50 @@ object AppStateRepository {
             latitude = latitude,
             longitude = longitude,
             timestamp = "Justo ahora",
-            description = newReport.description
+            description = newReport.description,
+            createdAtMillis = currentTime
         )
 
-        val currentReports = _reportsState.value.toMutableList()
-        currentReports.add(0, newReport)
-        _reportsState.value = currentReports
+        allStoredReports.add(0, newReport)
+        allStoredMarkers.add(0, newMarker)
 
-        val currentMarkers = _incidentMarkersState.value.toMutableList()
-        currentMarkers.add(0, newMarker)
-        _incidentMarkersState.value = currentMarkers
+        _reportsState.value = getValidRecentReports(allStoredReports)
+        _incidentMarkersState.value = getValidRecentMarkers(allStoredMarkers)
 
         _currentUser.value?.let { u ->
             _currentUser.value = u.copy(participationCount = u.participationCount + 1)
         }
 
+        // Actualizar tamaño y nivel de riesgo de las zonas dinámicamente
+        updateZoneAndRiskLevels()
+
+        try {
+            onReportCreated?.invoke(newReport)
+        } catch (_: Exception) {}
+
         return newReport
     }
 
-    // 5. EMBARGAR ALERTA DE PÁNICO (SOS) EN EL MAPA
+    // 5. ALERTA DE PÁNICO (SOS)
     fun triggerPanicAlert(latitude: Double = -17.3714, longitude: Double = -66.1432): IncidentMarker {
+        val currentTime = getCurrentTimeMillis()
         val panicMarker = IncidentMarker(
             id = "sos_${(1000..9999).random()}",
-            title = "🚨 ALERTA DE PÁNICO EN VIVO",
+            title = "🚨 ALERTA DE PÁNICO SOS",
             type = "ROBO",
             latitude = latitude,
             longitude = longitude,
             timestamp = "EN CURSO",
-            description = "Estudiante UCB activó la alerta de pánico en el campus."
+            description = "Estudiante ${_currentUser.value?.fullName ?: "UCB"} activó alerta SOS.",
+            createdAtMillis = currentTime
         )
 
-        val currentMarkers = _incidentMarkersState.value.toMutableList()
-        currentMarkers.add(0, panicMarker)
-        _incidentMarkersState.value = currentMarkers
+        allStoredMarkers.add(0, panicMarker)
+        _incidentMarkersState.value = getValidRecentMarkers(allStoredMarkers)
+
+        try {
+            onPanicAlertTriggered?.invoke(panicMarker)
+        } catch (_: Exception) {}
 
         return panicMarker
     }

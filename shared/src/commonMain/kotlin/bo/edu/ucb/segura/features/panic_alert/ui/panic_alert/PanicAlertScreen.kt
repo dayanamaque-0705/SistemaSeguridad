@@ -20,6 +20,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import bo.edu.ucb.segura.core.ui.UcbLogo
 import kotlin.math.roundToInt
 
 @Composable
@@ -61,7 +62,7 @@ fun PanicAlertScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("🛡️", fontSize = 18.sp)
+                    UcbLogo(modifier = Modifier.size(24.dp))
                     Text(
                         text = "UCB Segura",
                         color = textColor,
