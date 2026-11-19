@@ -45,12 +45,19 @@ fun HomeScreen(
     val dangerZones by AppStateRepository.dangerZonesState.collectAsState()
     val incidentMarkers by AppStateRepository.incidentMarkersState.collectAsState()
     val currentUser by AppStateRepository.currentUser.collectAsState()
+    val latestPanicLocation by AppStateRepository.latestPanicLocation.collectAsState()
 
     // Estado del filtro de riesgo seleccionado (null / "TODOS")
     var selectedRiskFilter by remember { mutableStateOf<String?>("TODOS") }
 
     // Estado de re-enfoque de ubicación en el mapa
     var centerOnLocation by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+
+    LaunchedEffect(latestPanicLocation) {
+        latestPanicLocation?.let { loc ->
+            centerOnLocation = loc
+        }
+    }
 
     // Estado de la Zona o Incidente seleccionado para mostrar detalle
     var selectedZone by remember { mutableStateOf<DangerZone?>(null) }

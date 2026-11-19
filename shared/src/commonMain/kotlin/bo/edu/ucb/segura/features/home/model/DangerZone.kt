@@ -4,12 +4,13 @@ enum class RiskLevel(
     val label: String,
     val colorHex: String,
     val argbFill: Long,   // Color de relleno transparente (ARGB)
-    val argbBorder: Long  // Color de borde sólido (ARGB)
+    val argbBorder: Long, // Color de borde sólido (ARGB)
+    val severityWeight: Int
 ) {
-    ALTO("Alto Riesgo", "#EF4444", 0x55EF4444, 0xFFDC2626),
-    MEDIO("Riesgo Medio", "#F97316", 0x55F97316, 0xFFEA580C),
-    BAJO("Riesgo Bajo", "#EAB308", 0x55EAB308, 0xFFD97706),
-    SEGURA("Zona Segura", "#22C55E", 0x5522C55E, 0xFF16A34A)
+    ALTO("Alto Riesgo", "#D50000", 0x55D50000, 0xFFD50000, 3),
+    MEDIO("Riesgo Medio", "#FF6D00", 0x55FF6D00, 0xFFFF6D00, 2),
+    BAJO("Riesgo Bajo", "#FFD600", 0x55FFD600, 0xFFFFD600, 1),
+    SEGURA("Zona Segura", "#22C55E", 0x5522C55E, 0xFF16A34A, 0)
 }
 
 data class DangerZone(

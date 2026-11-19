@@ -19,12 +19,13 @@ dependencies {
     implementation(libs.compose.uiToolingPreview)
     debugImplementation(libs.compose.uiTooling)
 
-    // Firebase BOM y dependencias para Firestore, Auth y Realtime Database (con base en google-services.json)
-    implementation(platform("com.google.firebase:firebase-bom:33.7.0"))
+    // Firebase BOM y dependencias para Firestore, Auth, Realtime Database y Cloud Messaging (FCM)
+    implementation(platform(libs.firebase.bom))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-firestore")
     implementation("com.google.firebase:firebase-auth")
     implementation("com.google.firebase:firebase-database")
+    implementation(libs.firebase.messaging)
 }
 
 android {

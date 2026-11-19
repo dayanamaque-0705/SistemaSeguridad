@@ -24,7 +24,6 @@ class AuthRemoteDataSource {
             email = email,
             phoneNumber = if (loginRequest.emailOrPhone.contains("@")) "72910482" else loginRequest.emailOrPhone,
             studentIdCard = "784210",
-            career = "Ingeniería de Sistemas",
             campus = "Campus Tupuraya (Cochabamba)",
             isVerified = true,
             participationCount = 5
@@ -48,7 +47,6 @@ class AuthRemoteDataSource {
                 email = email,
                 phoneNumber = "70000000",
                 studentIdCard = "889100",
-                career = "Ingeniería de Sistemas",
                 campus = "Campus Tupuraya (Cochabamba)",
                 isVerified = true,
                 participationCount = 1

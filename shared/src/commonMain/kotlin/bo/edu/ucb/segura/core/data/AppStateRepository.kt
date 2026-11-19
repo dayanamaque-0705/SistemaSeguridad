@@ -29,7 +29,6 @@ object AppStateRepository {
                 email = "estudiante.tupuraya@estudiantes.ucb.edu.bo",
                 phoneNumber = "72910482",
                 studentIdCard = "784210",
-                career = "Ingeniería de Sistemas",
                 campus = "Campus Tupuraya (Cochabamba)",
                 isVerified = true,
                 participationCount = 5
@@ -41,34 +40,34 @@ object AppStateRepository {
     private val _currentUser = MutableStateFlow<User?>(registeredUsers["estudiante.tupuraya@estudiantes.ucb.edu.bo"]?.user)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
 
-    // 2. ZONAS DE RIESGO Y REPORTES INICIALES
+    // 2. ZONAS DE RIESGO Y REPORTES INICIALES (DISPERSAS EN EL ÁREA PERMITIDA)
     private val initialDangerZones = listOf(
         DangerZone(
+            id = "zone_queruqueru_alto",
+            name = "Zona Queru Queru (Alto Riesgo)",
+            description = "Sector con reportes frecuentes de robos y escasa iluminación nocturna.",
+            centerLat = -17.36076,
+            centerLng = -66.1400,
+            radiusMeters = 90.0,
+            riskLevel = RiskLevel.ALTO
+        ),
+        DangerZone(
+            id = "zone_tupuraya_medio",
+            name = "Pasaje Oeste UCB (Riesgo Medio)",
+            description = "Zona lateral con reporte ocasional de objetos descuidados.",
+            centerLat = -17.3709,
+            centerLng = -66.1477,
+            radiusMeters = 70.0,
+            riskLevel = RiskLevel.MEDIO
+        ),
+        DangerZone(
             id = "zone_tupuraya_bajo",
-            name = "Campus UCB Tupuraya (Zona Baja)",
+            name = "Campus UCB Tupuraya (Riesgo Bajo)",
             description = "Área interna con vigilancia y bajo índice de incidentes.",
             centerLat = -17.3714,
             centerLng = -66.1432,
             radiusMeters = 75.0,
             riskLevel = RiskLevel.BAJO
-        ),
-        DangerZone(
-            id = "zone_tupuraya_medio",
-            name = "Pasaje Este UCB (Zona Media)",
-            description = "Zona lateral con reporte ocasional de objetos descuidados.",
-            centerLat = -17.3725,
-            centerLng = -66.1425,
-            radiusMeters = 65.0,
-            riskLevel = RiskLevel.MEDIO
-        ),
-        DangerZone(
-            id = "zone_queruqueru_alto",
-            name = "Zona Queru Queru (Alto Riesgo)",
-            description = "Sector con reportes frecuentes de robos y escasa iluminación nocturna.",
-            centerLat = -17.3650,
-            centerLng = -66.1350,
-            radiusMeters = 100.0,
-            riskLevel = RiskLevel.ALTO
         )
     )
 
@@ -82,7 +81,7 @@ object AppStateRepository {
             timestamp = "Hace 20 min",
             latitude = -17.3725,
             longitude = -66.1425,
-            createdAtMillis = getCurrentTimeMillis() - (2 * 60 * 60 * 1000L) // 2 horas
+            createdAtMillis = getCurrentTimeMillis() - (2 * 60 * 60 * 1000L)
         ),
         ReportModel(
             id = "rep_2",
@@ -97,13 +96,13 @@ object AppStateRepository {
         ),
         ReportModel(
             id = "rep_3",
-            type = "ROBO",
-            description = "Delincuente a pie arrebató bolso a transeúnte.",
-            location = "Zona Queru Queru",
+            type = "FALTA_LUZ",
+            description = "Falta de alumbrado público en pasaje cercano a la universidad.",
+            location = "Zona Queru Queru Norte",
             status = "Activo",
             timestamp = "Hace 5 horas",
-            latitude = -17.3650,
-            longitude = -66.1350,
+            latitude = -17.3670,
+            longitude = -66.1400,
             createdAtMillis = getCurrentTimeMillis() - (5 * 60 * 60 * 1000L)
         )
     )
@@ -131,79 +130,175 @@ object AppStateRepository {
         ),
         IncidentMarker(
             id = "inc_queru_1",
-            title = "Arrebato de mochila en parada",
-            type = "ROBO",
-            latitude = -17.3650,
-            longitude = -66.1350,
+            title = "Falta de luz en calle principal",
+            type = "FALTA_LUZ",
+            latitude = -17.3670,
+            longitude = -66.1400,
             timestamp = "Hace 5 horas",
-            description = "Delincuente a pie.",
+            description = "Luminaria pública apagada.",
             createdAtMillis = getCurrentTimeMillis() - (5 * 60 * 60 * 1000L)
         )
     )
 
-    private val _reportsState = MutableStateFlow<List<ReportModel>>(getValidRecentReports(allStoredReports))
+    private val _reportsState = MutableStateFlow<List<ReportModel>>(emptyList())
     val reportsState: StateFlow<List<ReportModel>> = _reportsState.asStateFlow()
 
-    private val _incidentMarkersState = MutableStateFlow<List<IncidentMarker>>(getValidRecentMarkers(allStoredMarkers))
+    private val _incidentMarkersState = MutableStateFlow<List<IncidentMarker>>(emptyList())
     val incidentMarkersState: StateFlow<List<IncidentMarker>> = _incidentMarkersState.asStateFlow()
 
-    private val _dangerZonesState = MutableStateFlow<List<DangerZone>>(computeInitialZones())
+    private val _dangerZonesState = MutableStateFlow<List<DangerZone>>(emptyList())
     val dangerZonesState: StateFlow<List<DangerZone>> = _dangerZonesState.asStateFlow()
 
-    private fun getValidRecentMarkers(markers: List<IncidentMarker>): List<IncidentMarker> {
-        val now = getCurrentTimeMillis()
-        // Borrarse de la pantalla luego de 10 horas, pero permanecen en DB
-        return markers.filter { m ->
-            m.createdAtMillis == 0L || (now - m.createdAtMillis <= TEN_HOURS_MS)
+    val latestPanicLocation = MutableStateFlow<Pair<Double, Double>?>(null)
+
+    init {
+        syncReportsFromRemote(allStoredReports, allStoredMarkers)
+    }
+
+    var onReportStatusUpdated: ((String, String) -> Unit)? = null
+
+    fun calculateHaversineDistanceMeters(
+        lat1: Double, lon1: Double,
+        lat2: Double, lon2: Double
+    ): Double {
+        val r = 6371000.0
+        val dLat = (lat2 - lat1) * kotlin.math.PI / 180.0
+        val dLon = (lon2 - lon1) * kotlin.math.PI / 180.0
+        val a = kotlin.math.sin(dLat / 2) * kotlin.math.sin(dLat / 2) +
+                kotlin.math.cos(lat1 * kotlin.math.PI / 180.0) * kotlin.math.cos(lat2 * kotlin.math.PI / 180.0) *
+                kotlin.math.sin(dLon / 2) * kotlin.math.sin(dLon / 2)
+        val c = 2 * kotlin.math.atan2(kotlin.math.sqrt(a), kotlin.math.sqrt(1 - a))
+        return r * c
+    }
+
+    private fun isReportActive(report: ReportModel, now: Long): Boolean {
+        val isStatusActive = when (report.status.trim().lowercase()) {
+            "resuelto", "cancelado" -> false
+            else -> true
+        }
+        val isRecent = report.createdAtMillis == 0L || (now - report.createdAtMillis <= TEN_HOURS_MS)
+        return isStatusActive && isRecent
+    }
+
+    fun computeDynamicDangerZones(activeReports: List<ReportModel>): List<DangerZone> {
+        if (activeReports.isEmpty()) return emptyList()
+
+        val clusters = mutableListOf<MutableList<ReportModel>>()
+
+        for (report in activeReports) {
+            var addedToCluster = false
+            for (cluster in clusters) {
+                val centerLat = cluster.map { it.latitude }.average()
+                val centerLng = cluster.map { it.longitude }.average()
+                val dist = calculateHaversineDistanceMeters(report.latitude, report.longitude, centerLat, centerLng)
+                if (dist <= 80.0) {
+                    cluster.add(report)
+                    addedToCluster = true
+                    break
+                }
+            }
+            if (!addedToCluster) {
+                clusters.add(mutableListOf(report))
+            }
+        }
+
+        return clusters.mapIndexed { index, cluster ->
+            val centerLat = cluster.map { it.latitude }.average()
+            val centerLng = cluster.map { it.longitude }.average()
+            val count = cluster.size
+
+            val radiusMeters = when (count) {
+                1 -> 40.0
+                2 -> 75.0
+                else -> 110.0 + ((count - 3) * 15.0).coerceAtMost(100.0)
+            }
+
+            val highestRisk = cluster.map { report ->
+                when (report.type.trim().uppercase()) {
+                    "ROBO" -> RiskLevel.ALTO
+                    "SOSPECHOSO", "RINA", "RIÑA" -> RiskLevel.MEDIO
+                    "FALTA_LUZ", "FALTA DE LUZ" -> RiskLevel.BAJO
+                    else -> RiskLevel.BAJO
+                }
+            }.maxByOrNull { it.severityWeight } ?: RiskLevel.BAJO
+
+            DangerZone(
+                id = "dyn_zone_$index",
+                name = "Zona de Riesgo (${highestRisk.label})",
+                description = "$count reporte(s) activo(s) en este sector. Tipos: ${cluster.map { it.type }.distinct().joinToString()}",
+                centerLat = centerLat,
+                centerLng = centerLng,
+                radiusMeters = radiusMeters,
+                riskLevel = highestRisk
+            )
         }
     }
 
-    private fun getValidRecentReports(reports: List<ReportModel>): List<ReportModel> {
-        val now = getCurrentTimeMillis()
-        // Borrarse de la pantalla luego de 10 horas, pero permanecen en DB
-        return reports.filter { r ->
-            r.createdAtMillis == 0L || (now - r.createdAtMillis <= TEN_HOURS_MS)
+    fun syncUsersFromRemote(remoteUsers: List<Pair<User, String>>) {
+        for ((user, pwd) in remoteUsers) {
+            val cleanEmail = user.email.trim().lowercase()
+            val cleanPhone = user.phoneNumber.trim().replace(" ", "").lowercase()
+            if (cleanEmail.isNotBlank()) {
+                registeredUsers[cleanEmail] = RegisteredAccount(user, pwd)
+            }
+            if (cleanPhone.isNotBlank()) {
+                registeredUsers[cleanPhone] = RegisteredAccount(user, pwd)
+            }
+        }
+        _currentUser.value?.let { current ->
+            val updated = registeredUsers[current.email.lowercase()]?.user
+                ?: registeredUsers.values.find { it.user.id == current.id }?.user
+            if (updated != null && updated != current) {
+                _currentUser.value = updated
+            }
         }
     }
 
-    // Sincronizar reportes desde Firebase para que todos los usuarios los compartan en tiempo real
     fun syncReportsFromRemote(remoteReports: List<ReportModel>, remoteMarkers: List<IncidentMarker>) {
         allStoredReports.clear()
         allStoredReports.addAll(remoteReports)
         allStoredMarkers.clear()
         allStoredMarkers.addAll(remoteMarkers)
 
-        _reportsState.value = getValidRecentReports(allStoredReports)
-        _incidentMarkersState.value = getValidRecentMarkers(allStoredMarkers)
-        updateZoneAndRiskLevels()
-    }
-
-    private fun computeInitialZones(): List<DangerZone> {
-        val reports = _reportsState.value
-        return initialDangerZones.map { zone ->
-            val nearbyReportsCount = reports.count { r ->
-                val dLat = r.latitude - zone.centerLat
-                val dLng = r.longitude - zone.centerLng
-                val dist = kotlin.math.sqrt(dLat * dLat + dLng * dLng) * 111000.0
-                dist <= 500.0
-            }
-            val dynamicRadius = minOf(220.0, zone.radiusMeters + (nearbyReportsCount * 35.0))
-            val newRisk = when {
-                nearbyReportsCount == 0 -> RiskLevel.BAJO
-                nearbyReportsCount == 1 -> RiskLevel.MEDIO
-                else -> RiskLevel.ALTO
-            }
-            zone.copy(radiusMeters = dynamicRadius, riskLevel = newRisk)
+        val now = getCurrentTimeMillis()
+        val activeReports = allStoredReports.filter { isReportActive(it, now) }
+        val activeMarkers = allStoredMarkers.filter { m ->
+            val matching = allStoredReports.find { r -> "inc_${r.id}" == m.id || r.id == m.id }
+            if (matching != null) isReportActive(matching, now) else (m.createdAtMillis == 0L || now - m.createdAtMillis <= TEN_HOURS_MS)
         }
+
+        _reportsState.value = activeReports
+        _incidentMarkersState.value = activeMarkers
+        _dangerZonesState.value = computeDynamicDangerZones(activeReports)
     }
 
-    private fun updateZoneAndRiskLevels() {
-        _dangerZonesState.value = computeInitialZones()
+    fun updateReportStatus(reportId: String, newStatus: String) {
+        val report = allStoredReports.find { it.id == reportId }
+        if (report != null) {
+            val updatedReport = report.copy(status = newStatus)
+            val index = allStoredReports.indexOf(report)
+            if (index >= 0) {
+                allStoredReports[index] = updatedReport
+            }
+            val now = getCurrentTimeMillis()
+            val activeReports = allStoredReports.filter { isReportActive(it, now) }
+            val activeMarkers = allStoredMarkers.filter { m ->
+                val matching = allStoredReports.find { r -> "inc_${r.id}" == m.id || r.id == m.id }
+                if (matching != null) isReportActive(matching, now) else (m.createdAtMillis == 0L || now - m.createdAtMillis <= TEN_HOURS_MS)
+            }
+            _reportsState.value = activeReports
+            _incidentMarkersState.value = activeMarkers
+            _dangerZonesState.value = computeDynamicDangerZones(activeReports)
+
+            try {
+                onReportStatusUpdated?.invoke(reportId, newStatus)
+            } catch (_: Exception) {}
+        }
     }
 
     // VALIDACIÓN ESTRICTA DE RANGO GEOGRÁFICO (BoundingBox Tupuraya & Queru Queru)
     fun isWithinActiveRange(lat: Double, lng: Double): Boolean {
-        val maxLat = -17.3635
+        val maxLat = -17.3600
         val minLat = -17.3785
         val maxLon = -66.1355
         val minLon = -66.1510
@@ -219,18 +314,21 @@ object AppStateRepository {
         password: String
     ): Boolean {
         val cleanEmail = email.trim().lowercase()
+        val cleanPhone = phone.trim().replace(" ", "").lowercase()
         val user = User(
             id = "ucb-est-2026-${(1000..9999).random()}",
             fullName = fullName.trim(),
             email = cleanEmail,
             phoneNumber = phone.trim(),
             studentIdCard = studentIdCard.trim(),
-            career = "Ingeniería de Sistemas",
             campus = "Campus Tupuraya (Cochabamba)",
             isVerified = true,
             participationCount = 1
         )
         registeredUsers[cleanEmail] = RegisteredAccount(user, password)
+        if (cleanPhone.isNotBlank()) {
+            registeredUsers[cleanPhone] = RegisteredAccount(user, password)
+        }
         _currentUser.value = user
 
         try {
@@ -241,9 +339,48 @@ object AppStateRepository {
     }
 
     fun loginUser(emailOrPhone: String, password: String): Pair<Boolean, String?> {
-        val input = emailOrPhone.trim().lowercase()
+        val input = emailOrPhone.trim().lowercase().replace(" ", "")
+        val isPhoneInput = input.all { it.isDigit() || it == '+' } || (!input.contains("@") && input.any { it.isDigit() })
+
+        if (isPhoneInput) {
+            // Requisito 1: Inicio de sesión con número de teléfono
+            val account = registeredUsers[input] ?: registeredUsers.values.find {
+                it.user.phoneNumber.replace(" ", "") == input
+            }
+
+            // a) Verificar obligatoriamente que el teléfono exista en la base de datos
+            if (account == null) {
+                return Pair(
+                    false,
+                    "Acceso denegado: El número de teléfono ($input) no está registrado previamente en la base de datos. Debe registrarse primero."
+                )
+            }
+
+            // b) Verificar que el nodo de usuario tenga su correo institucional (@ucb.edu.bo) registrado y asociado
+            val userEmail = account.user.email.trim().lowercase()
+            val isUcbEmail = userEmail.endsWith("@ucb.edu.bo") ||
+                    userEmail.endsWith("@estudiantes.ucb.edu.bo") ||
+                    userEmail.endsWith("@est.ucb.edu.bo") ||
+                    userEmail.endsWith("@cba.ucb.edu.bo")
+
+            if (userEmail.isBlank() || !isUcbEmail) {
+                return Pair(
+                    false,
+                    "Acceso denegado: El número de teléfono ($input) no tiene un correo institucional UCB (@ucb.edu.bo) registrado y asociado en la base de datos."
+                )
+            }
+
+            if (account.password.isNotBlank() && account.password != password) {
+                return Pair(false, "Contraseña incorrecta. Verifique sus credenciales institucionales.")
+            }
+
+            _currentUser.value = account.user
+            return Pair(true, null)
+        }
+
+        // Inicio de sesión con correo institucional UCB
         val account = registeredUsers[input] ?: registeredUsers.values.find {
-            it.user.phoneNumber == input || it.user.email == input
+            it.user.email.lowercase() == input
         }
 
         if (account == null) {
@@ -262,7 +399,6 @@ object AppStateRepository {
                     email = input,
                     phoneNumber = "70000000",
                     studentIdCard = "784200",
-                    career = "Estudiante UCB",
                     campus = "Campus Tupuraya (Cochabamba)",
                     isVerified = true,
                     participationCount = 1
@@ -274,7 +410,7 @@ object AppStateRepository {
             return Pair(false, "Acceso denegado: Usuario no registrado. Regístrese con su correo institucional UCB (@ucb.edu.bo).")
         }
 
-        if (account.password != password) {
+        if (account.password.isNotBlank() && account.password != password) {
             return Pair(false, "Contraseña incorrecta. Verifique sus credenciales institucionales.")
         }
 
@@ -330,15 +466,16 @@ object AppStateRepository {
         allStoredReports.add(0, newReport)
         allStoredMarkers.add(0, newMarker)
 
-        _reportsState.value = getValidRecentReports(allStoredReports)
-        _incidentMarkersState.value = getValidRecentMarkers(allStoredMarkers)
-
-        _currentUser.value?.let { u ->
-            _currentUser.value = u.copy(participationCount = u.participationCount + 1)
+        val now = getCurrentTimeMillis()
+        val activeReports = allStoredReports.filter { isReportActive(it, now) }
+        val activeMarkers = allStoredMarkers.filter { m ->
+            val matching = allStoredReports.find { r -> "inc_${r.id}" == m.id || r.id == m.id }
+            if (matching != null) isReportActive(matching, now) else (m.createdAtMillis == 0L || now - m.createdAtMillis <= TEN_HOURS_MS)
         }
 
-        // Actualizar tamaño y nivel de riesgo de las zonas dinámicamente
-        updateZoneAndRiskLevels()
+        _reportsState.value = activeReports
+        _incidentMarkersState.value = activeMarkers
+        _dangerZonesState.value = computeDynamicDangerZones(activeReports)
 
         try {
             onReportCreated?.invoke(newReport)
@@ -350,6 +487,8 @@ object AppStateRepository {
     // 5. ALERTA DE PÁNICO (SOS)
     fun triggerPanicAlert(latitude: Double = -17.3714, longitude: Double = -66.1432): IncidentMarker {
         val currentTime = getCurrentTimeMillis()
+        latestPanicLocation.value = Pair(latitude, longitude)
+
         val panicMarker = IncidentMarker(
             id = "sos_${(1000..9999).random()}",
             title = "🚨 ALERTA DE PÁNICO SOS",
@@ -362,7 +501,15 @@ object AppStateRepository {
         )
 
         allStoredMarkers.add(0, panicMarker)
-        _incidentMarkersState.value = getValidRecentMarkers(allStoredMarkers)
+        val now = getCurrentTimeMillis()
+        val activeReports = allStoredReports.filter { isReportActive(it, now) }
+        val activeMarkers = allStoredMarkers.filter { m ->
+            val matching = allStoredReports.find { r -> "inc_${r.id}" == m.id || r.id == m.id }
+            if (matching != null) isReportActive(matching, now) else (m.createdAtMillis == 0L || now - m.createdAtMillis <= TEN_HOURS_MS)
+        }
+        _reportsState.value = activeReports
+        _incidentMarkersState.value = activeMarkers
+        _dangerZonesState.value = computeDynamicDangerZones(activeReports)
 
         try {
             onPanicAlertTriggered?.invoke(panicMarker)

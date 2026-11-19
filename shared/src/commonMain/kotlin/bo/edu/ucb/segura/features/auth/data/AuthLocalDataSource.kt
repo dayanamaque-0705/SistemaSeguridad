@@ -13,7 +13,6 @@ class AuthLocalDataSource {
         email = "estudiante.tupuraya@estudiantes.ucb.edu.bo",
         phoneNumber = "72910482",
         studentIdCard = "784210",
-        career = "Ingeniería de Sistemas",
         campus = "Campus Tupuraya (Cochabamba)",
         isVerified = true,
         participationCount = 5

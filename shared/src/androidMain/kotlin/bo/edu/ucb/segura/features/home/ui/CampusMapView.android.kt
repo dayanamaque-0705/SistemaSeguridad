@@ -70,7 +70,7 @@ actual fun CampusMapView(
 
                 // Límites geográficos estrictos (BoundingBox) para Tupuraya y Queru Queru
                 val campusBounds = BoundingBox(
-                    -17.3635, // Norte (Queru Queru / Parque Lincoln)
+                    -17.3590, // Norte (Queru Queru / Parque Lincoln)
                     -66.1355, // Este (Tupuraya / Gral. Galindo)
                     -17.3785, // Sur (Río Rocha / Av. Uyuni / Circunvalación)
                     -66.1510  // Oeste (Av. Pando / Libertador Bolívar)
@@ -139,8 +139,8 @@ actual fun CampusMapView(
             // 3. Dibujar el Rectángulo Perimetral (BoundingBox) con Línea Negra Gruesa
             val boundaryPolygon = Polygon(mapView).apply {
                 val boundsPoints = listOf(
-                    GeoPoint(-17.3635, -66.1510), // Noroeste
-                    GeoPoint(-17.3635, -66.1355), // Noreste
+                    GeoPoint(-17.3590, -66.1510), // Noroeste
+                    GeoPoint(-17.3590, -66.1355), // Noreste
                     GeoPoint(-17.3785, -66.1355), // Sureste
                     GeoPoint(-17.3785, -66.1510)  // Suroeste
                 )
