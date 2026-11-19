@@ -234,15 +234,30 @@ object AppStateRepository {
         }
     }
 
+    private fun normalizePhone(phone: String): String {
+        val digits = phone.filter { it.isDigit() }
+        return if (digits.length > 8 && digits.startsWith("591")) {
+            digits.drop(3)
+        } else {
+            digits
+        }
+    }
+
     fun syncUsersFromRemote(remoteUsers: List<Pair<User, String>>) {
         for ((user, pwd) in remoteUsers) {
             val cleanEmail = user.email.trim().lowercase()
-            val cleanPhone = user.phoneNumber.trim().replace(" ", "").lowercase()
+            val cleanPhone = normalizePhone(user.phoneNumber)
             if (cleanEmail.isNotBlank()) {
-                registeredUsers[cleanEmail] = RegisteredAccount(user, pwd)
+                val existingAccount = registeredUsers[cleanEmail] ?: registeredUsers.values.find { it.user.email.lowercase() == cleanEmail }
+                val existingPwd = existingAccount?.password
+                val finalPwd = if ((pwd.isBlank() || pwd == "password123") && !existingPwd.isNullOrBlank() && existingPwd != "password123") existingPwd else pwd
+                registeredUsers[cleanEmail] = RegisteredAccount(user, finalPwd)
             }
             if (cleanPhone.isNotBlank()) {
-                registeredUsers[cleanPhone] = RegisteredAccount(user, pwd)
+                val existingAccount = registeredUsers[cleanPhone] ?: registeredUsers.values.find { normalizePhone(it.user.phoneNumber) == cleanPhone }
+                val existingPwd = existingAccount?.password
+                val finalPwd = if ((pwd.isBlank() || pwd == "password123") && !existingPwd.isNullOrBlank() && existingPwd != "password123") existingPwd else pwd
+                registeredUsers[cleanPhone] = RegisteredAccount(user, finalPwd)
             }
         }
         _currentUser.value?.let { current ->
@@ -314,7 +329,7 @@ object AppStateRepository {
         password: String
     ): Boolean {
         val cleanEmail = email.trim().lowercase()
-        val cleanPhone = phone.trim().replace(" ", "").lowercase()
+        val cleanPhone = normalizePhone(phone)
         val user = User(
             id = "ucb-est-2026-${(1000..9999).random()}",
             fullName = fullName.trim(),
@@ -340,23 +355,52 @@ object AppStateRepository {
 
     fun loginUser(emailOrPhone: String, password: String): Pair<Boolean, String?> {
         val input = emailOrPhone.trim().lowercase().replace(" ", "")
-        val isPhoneInput = input.all { it.isDigit() || it == '+' } || (!input.contains("@") && input.any { it.isDigit() })
+        val normalizedInput = normalizePhone(emailOrPhone)
+        val isPhoneInput = emailOrPhone.trim().all { it.isDigit() || it == '+' || it == ' ' } && (emailOrPhone.any { it.isDigit() } && !emailOrPhone.contains("@"))
 
-        if (isPhoneInput) {
-            // Requisito 1: Inicio de sesión con número de teléfono
-            val account = registeredUsers[input] ?: registeredUsers.values.find {
-                it.user.phoneNumber.replace(" ", "") == input
+        val account = registeredUsers[input]
+            ?: registeredUsers[normalizedInput]
+            ?: registeredUsers.values.find {
+                it.user.email.lowercase() == input ||
+                normalizePhone(it.user.phoneNumber) == normalizedInput ||
+                it.user.phoneNumber.replace(" ", "").lowercase() == input
             }
 
-            // a) Verificar obligatoriamente que el teléfono exista en la base de datos
-            if (account == null) {
+        if (account == null) {
+            if (isPhoneInput) {
                 return Pair(
                     false,
-                    "Acceso denegado: El número de teléfono ($input) no está registrado previamente en la base de datos. Debe registrarse primero."
+                    "Acceso denegado: El número de teléfono ($emailOrPhone) no está registrado previamente en la base de datos. Debe registrarse primero."
                 )
-            }
+            } else {
+                val isUcbEmail = input.endsWith("@ucb.edu.bo") ||
+                        input.endsWith("@estudiantes.ucb.edu.bo") ||
+                        input.endsWith("@est.ucb.edu.bo") ||
+                        input.endsWith("@cba.ucb.edu.bo")
 
-            // b) Verificar que el nodo de usuario tenga su correo institucional (@ucb.edu.bo) registrado y asociado
+                if (isUcbEmail) {
+                    if (password.length < 6) {
+                        return Pair(false, "La contraseña debe tener al menos 6 caracteres.")
+                    }
+                    val newUser = User(
+                        id = "ucb-est-2026-${(1000..9999).random()}",
+                        fullName = input.substringBefore("@").replace(".", " "),
+                        email = input,
+                        phoneNumber = "70000000",
+                        studentIdCard = "784200",
+                        campus = "Campus Tupuraya (Cochabamba)",
+                        isVerified = true,
+                        participationCount = 1
+                    )
+                    registeredUsers[input] = RegisteredAccount(newUser, password)
+                    _currentUser.value = newUser
+                    return Pair(true, null)
+                }
+                return Pair(false, "Acceso denegado: Usuario no registrado. Regístrese con su correo institucional UCB (@ucb.edu.bo).")
+            }
+        }
+
+        if (isPhoneInput) {
             val userEmail = account.user.email.trim().lowercase()
             val isUcbEmail = userEmail.endsWith("@ucb.edu.bo") ||
                     userEmail.endsWith("@estudiantes.ucb.edu.bo") ||
@@ -366,48 +410,9 @@ object AppStateRepository {
             if (userEmail.isBlank() || !isUcbEmail) {
                 return Pair(
                     false,
-                    "Acceso denegado: El número de teléfono ($input) no tiene un correo institucional UCB (@ucb.edu.bo) registrado y asociado en la base de datos."
+                    "Acceso denegado: El número de teléfono ($emailOrPhone) no tiene un correo institucional UCB (@ucb.edu.bo) registrado y asociado en la base de datos."
                 )
             }
-
-            if (account.password.isNotBlank() && account.password != password) {
-                return Pair(false, "Contraseña incorrecta. Verifique sus credenciales institucionales.")
-            }
-
-            _currentUser.value = account.user
-            return Pair(true, null)
-        }
-
-        // Inicio de sesión con correo institucional UCB
-        val account = registeredUsers[input] ?: registeredUsers.values.find {
-            it.user.email.lowercase() == input
-        }
-
-        if (account == null) {
-            val isUcbEmail = input.endsWith("@ucb.edu.bo") ||
-                    input.endsWith("@estudiantes.ucb.edu.bo") ||
-                    input.endsWith("@est.ucb.edu.bo") ||
-                    input.endsWith("@cba.ucb.edu.bo")
-
-            if (isUcbEmail) {
-                if (password.length < 6) {
-                    return Pair(false, "La contraseña debe tener al menos 6 caracteres.")
-                }
-                val newUser = User(
-                    id = "ucb-est-2026-${(1000..9999).random()}",
-                    fullName = input.substringBefore("@").replace(".", " "),
-                    email = input,
-                    phoneNumber = "70000000",
-                    studentIdCard = "784200",
-                    campus = "Campus Tupuraya (Cochabamba)",
-                    isVerified = true,
-                    participationCount = 1
-                )
-                registeredUsers[input] = RegisteredAccount(newUser, password)
-                _currentUser.value = newUser
-                return Pair(true, null)
-            }
-            return Pair(false, "Acceso denegado: Usuario no registrado. Regístrese con su correo institucional UCB (@ucb.edu.bo).")
         }
 
         if (account.password.isNotBlank() && account.password != password) {

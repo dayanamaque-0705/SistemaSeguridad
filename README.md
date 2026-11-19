@@ -1,40 +1,37 @@
-# UCB Segura - Sistema de Monitoreo y Alertas de Seguridad
+# UCB Segura
 
-**Universidad Católica Boliviana San Pablo • Campus Tupuraya (Gestión 2026)**
-
-UCB Segura es un sistema de monitoreo y emisión de alertas de seguridad en tiempo real diseñado para estudiantes universitarios en las zonas circundantes del campus Tupuraya de la UCB Cochabamba.
+**Universidad Católica Boliviana "San Pablo" • Campus Tupuraya (Gestión 2026)**
 
 ---
 
-## 📌 Funcionalidades Principales
+## 1. Resumen del Proyecto
 
-1. **🔐 Autenticación y Registro Institucional Exclusivo**:
-   - Registro restringido únicamente a direcciones de correo institucional UCB (`@ucb.edu.bo`, `@estudiantes.ucb.edu.bo`, `@est.ucb.edu.bo`, `@cba.ucb.edu.bo`).
-   - Acceso seguro mediante contraseña y carné institucional UCB.
+UCB Segura es un sistema de monitoreo y alertas de seguridad en tiempo real diseñado para los estudiantes de la Universidad Católica Boliviana en el Campus Tupuraya (Cochabamba). Su propósito es mitigar la vulnerabilidad generada por la deficiencia en el alumbrado público, la presencia de grupos en la vía pública y la falta de herramientas tecnológicas de prevención, permitiendo a la comunidad estudiantil desplazarse con mayor tranquilidad.
 
-2. **🗺️ Mapa Interactivo de Zonas de Riesgo en Vivo**:
-   - Mapa nítido renderizado con **OpenStreetMap (osmdroid)**.
-   - Polígonos de riesgo codificados por colores:
-     - 🔴 **Alto Riesgo**: Pasajes oscuros y vías de alto peligro nocturno.
-     - 🟠 **Riesgo Medio**: Paradas de transporte y zonas con aglomeraciones.
-     - 🟡 **Riesgo Bajo**: Áreas exteriores con precaución estándar.
-     - 🟢 **Zona Segura**: Accesos principales con vigilancia 24/7.
-   - **Punto Azul de Ubicación en Tiempo Real (`📍 Aquí estoy`)** con botón de enfoque GPS.
+## 2. Objetivos
 
-3. **📋 Módulo de Reportes de Incidentes y Selección en Mapa**:
-   - Emisión de notificaciones sobre *Robo/Asalto*, *Riña*, *Falta de luz* o *Persona sospechosa*.
-   - **Seleccionador de ubicación dinámico en mapa**: Toca cualquier punto del campus para fijar la ubicación exacta con un pin rojo objetivo.
-   - Sincronización instantánea con el mapa de seguridad y la lista de *Mis Reportes*.
+### 2.1 Objetivo General
+Desarrollar un sistema de monitoreo y alertas de seguridad para los estudiantes universitarios en las zonas circundantes de la Universidad Católica Boliviana San Pablo durante la gestión 2026.
 
-4. **🚨 Botón de Pánico (SOS) y Alertas de Emergencia**:
-   - Emisión de alerta de emergencia en tiempo real para notificar a la comunidad UCB.
-   - Rastreo GPS temporal activado exclusivamente durante la emisión de la alerta.
+### 2.2 Objetivos Específicos
+- Módulo de autenticación exclusivo para correos institucionales UCB (@ucb.edu.bo o @estudiantes.ucb.edu.bo).
+- Módulo de reportes ciudadanos inmediatos para incidentes, riñas o presencia sospechosa.
+- Mapa interactivo con zonas de riesgo y áreas de mayor vulnerabilidad.
+- Sistema de alertas de emergencia en tiempo real (botón de pánico SOS).
 
----
+## 3. Alcances y Límites
 
-## 🛠️ Tecnología y Arquitectura
+- **Alcance**: Aplicación multiplataforma orientada a estudiantes UCB, registro institucional obligatorio, reportes de incidentes, mapa de calor/riesgo y botón de pánico SOS.
+- **Límites**: Acceso exclusivo para miembros UCB (sin transeúntes externos); sin integración directa con la Policía Nacional; cobertura restringida al perímetro del Campus Tupuraya y rutas de tránsito estudiantil; rastreo GPS activo únicamente durante la emergencia.
 
-- **Lenguaje**: Kotlin (Multiplatform / Jetpack Compose Multiplatform)
-- **UI Framework**: Compose Multiplatform & Material Design 3
-- **Mapas**: OpenStreetMap (`org.osmdroid:osmdroid-android`)
-- **Plataformas Soportadas**: Android (Móvil) & Web (Wasm)
+## 4. Arquitectura y Tecnologías
+
+- **Lenguaje y UI**: Kotlin Multiplatform, Compose Multiplatform, Material Design 3.
+- **Mapas**: osmdroid centrado en Campus Tupuraya (-17.3714, -66.1432).
+- **Backend y Mensajería**: Firebase Realtime Database, Firebase Cloud Messaging (FCM), Firebase Authentication.
+- **Estructura**: Organización modular por capas (model, application, data, ui) y funcionalidades (auth, home, panic_alert, profile, reports).
+
+## 5. Configuración Inicial
+
+1. Clonar el repositorio y abrir el proyecto en Android Studio.
+2. Colocar el archivo `google-services.json` en el directorio de `androidApp`.

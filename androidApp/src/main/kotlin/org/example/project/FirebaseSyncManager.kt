@@ -106,7 +106,7 @@ object FirebaseSyncManager {
             usersListener?.let { rtdb.getReference("usuarios").addValueEventListener(it) }
 
             // 1. Sincronizar nuevo usuario registrado
-            AppStateRepository.onUserRegistered = { user, _ ->
+            AppStateRepository.onUserRegistered = { user, password ->
                 try {
                     val userMap = mapOf(
                         "id" to user.id,
@@ -116,7 +116,8 @@ object FirebaseSyncManager {
                         "studentIdCard" to user.studentIdCard,
                         "campus" to user.campus,
                         "isVerified" to user.isVerified,
-                        "participationCount" to user.participationCount
+                        "participationCount" to user.participationCount,
+                        "password" to password
                     )
                     val safeKey = user.email.replace(".", "_").replace("@", "_")
 
